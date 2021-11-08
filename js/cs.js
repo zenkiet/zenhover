@@ -3991,35 +3991,30 @@ function loop()
 
 	const { mx, my } = Object(_event__WEBPACK_IMPORTED_MODULE_2__["getMousePosition"])();
 
-	if (!state.hide)
+	if (!state.hide) dropperWindow.style.visibility = "visible";
+	else dropperWindow.style.visibility = "hidden";
+
+	const windowWidth = window.innerWidth - windowOffset;
+	const windowHeight = window.innerHeight - windowOffset;
+	let x = mx - window.scrollX + windowOffset;
+	let y = my - window.scrollY + windowOffset;
+
+	const box = dropperWindow.getBoundingClientRect();
+	const width = box.width;
+	const height = box.height;
+	if (x +  width > windowWidth)
 	{
-		dropperWindow.style.visibility = "visible";
-		const windowWidth = window.innerWidth - windowOffset;
-	    const windowHeight = window.innerHeight - windowOffset;
-	    let x = mx - window.scrollX + windowOffset;
-	    let y = my - window.scrollY + windowOffset;
-
-	    const box = dropperWindow.getBoundingClientRect();
-	    const width = box.width;
-	    const height = box.height;
-	    if (x +  width > windowWidth)
-	    {
-	        x = mx - (width + windowOffset);
-	    }
-
-	    if (y + height > windowHeight &&
-	    	y - height > 0)
-	    {
-	    	y = my - window.scrollY - height - windowOffset;
-	    } 
-
-	    dropperWindow.style.left = `${x}px`;
-	    dropperWindow.style.top = `${y}px`;
+		x = mx - (width + windowOffset);
 	}
-	else 
+
+	if (y + height > windowHeight &&
+		y - height > 0)
 	{
-		dropperWindow.style.visibility = "hidden";
-	}
+		y = my - window.scrollY - height - windowOffset;
+	} 
+
+	dropperWindow.style.left = `${x}px`;
+	dropperWindow.style.top = `${y}px`;
 	
     // Draw image on dropper canvas
 	let level = 5;
@@ -4140,7 +4135,7 @@ function dockWindow()
 	state.dockedWindows.push(dockedWindow);
 	
 	state.hide = true;
-	setTimeout(() => state.hide = false, 1500);
+	setTimeout(() => state.hide = false, 200);
 }
 
 function prepare()
@@ -4960,11 +4955,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _event__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../event */ "./src/content_scripts/event.js");
 /* harmony import */ var _ui_toolbar__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./ui/toolbar */ "./src/content_scripts/inspect/ui/toolbar.js");
 /* harmony import */ var _target__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./target */ "./src/content_scripts/inspect/target.js");
-/* harmony import */ var _mark__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./mark */ "./src/content_scripts/inspect/mark.js");
-/* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../../utils/svg */ "./src/utils/svg.js");
-/* harmony import */ var _tools_tools__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./tools/tools */ "./src/content_scripts/inspect/tools/tools.js");
-/* harmony import */ var _settings__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../settings */ "./src/content_scripts/settings.js");
-/* harmony import */ var _postMessage__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./postMessage */ "./src/content_scripts/inspect/postMessage.js");
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _mark__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./mark */ "./src/content_scripts/inspect/mark.js");
+/* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../utils/svg */ "./src/utils/svg.js");
+/* harmony import */ var _tools_tools__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./tools/tools */ "./src/content_scripts/inspect/tools/tools.js");
+/* harmony import */ var _settings__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../settings */ "./src/content_scripts/settings.js");
+/* harmony import */ var _postMessage__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./postMessage */ "./src/content_scripts/inspect/postMessage.js");
+
 
 
 
@@ -5064,8 +5061,8 @@ async function initialize()
 		}
 	}
 
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customCSS.restore();
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customJS.restore();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customCSS.restore();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customJS.restore();
 }
 
 function isSheetPresent(href)
@@ -5091,12 +5088,28 @@ function isSheetPresent(href)
 	return present;
 }
 
+function createTooltip(title, shortcut, description)
+{
+	const tooltip = _utils_element__WEBPACK_IMPORTED_MODULE_6__["default"].create(`
+		<div class="tooltip">
+			<div class="tooltip-title">
+				<h4>${title}</h4>
+				<span>${shortcut}</span>
+			</div>
+			<span class="tooltip-description">${description}</span>
+		</span>
+	`);
+
+	return tooltip;
+}
+
 function setupToolbar()
 {
 	toolbar = Object(_ui_toolbar__WEBPACK_IMPORTED_MODULE_4__["createToolbar"])();
 	toolbar.moving = { allowed: false };
 
 	const playBtn = toolbar.querySelector("#play");
+	playBtn.appendChild(createTooltip("Playback", "P", "Play or pause inspector."));
 	playBtn.addEventListener('click', () => togglePlayback(null, playBtn));
 
 	const dragSpace = toolbar.querySelector('#space');
@@ -5123,33 +5136,37 @@ function setupToolbar()
 	});
 
 	const guidelinesBtn = toolbar.querySelector('#guidelines');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.guidelines.initialize(guidelinesBtn);
+	guidelinesBtn.appendChild(createTooltip("Guidelines", "G", "Check alignment of an element."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.guidelines.initialize(guidelinesBtn);
 	guidelinesBtn.addEventListener('click', () => 
 	{
 		toggleGuidelines();
 	});
 
 	const gridsBtn = toolbar.querySelector('#grids');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.grids.initialize(gridsBtn);
+	gridsBtn.appendChild(createTooltip("Grids", "H", "Adds outline to every element."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.initialize(gridsBtn);
 	gridsBtn.addEventListener('click', () => 
 	{
 		toggleGrid();
 	});
 
 	const fontsBtn = toolbar.querySelector('#fonts');
+	fontsBtn.appendChild(createTooltip("Fonts", "F", "Know what font each tag is using."));
 	const fontsWindow = toolbar.querySelector('#fonts_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.fonts.initialize(fontsBtn, fontsWindow);
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.fonts.initialize(fontsBtn, fontsWindow);
 	fontsBtn.addEventListener('click', () => 
 	{
 		toggleFonts();
 	});
 	fontsWindow.querySelector("#fonts_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("fonts");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("fonts");
 	});
 
 	const editBtn = toolbar.querySelector('#edit');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.edit.initialize(editBtn);
+	editBtn.appendChild(createTooltip("Edit", "E", "Edit content of an element."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.edit.initialize(editBtn);
 	editBtn.addEventListener('click', () => 
 	{
 		toggleEdit();
@@ -5157,56 +5174,61 @@ function setupToolbar()
 
 	const paletteBtn = toolbar.querySelector('#palette');
 	const paletteWindow = toolbar.querySelector('#palette_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.palette.initialize(paletteBtn, paletteWindow);
+	paletteBtn.appendChild(createTooltip("Color Palette", "P", "Inspect color pallete of whole site in a visual way."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.palette.initialize(paletteBtn, paletteWindow);
 	paletteBtn.addEventListener('click', () => 
 	{
 		togglePalette();
 	});
 	paletteWindow.querySelector("#palette_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("palette");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("palette");
 	});
 
 	const trashBtn = toolbar.querySelector('#trash');
 	const trashWindow = toolbar.querySelector('#trash_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.initialize(trashBtn, trashWindow);
+	trashBtn.appendChild(createTooltip("Trash", "T", "Hide or Remove an element."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.initialize(trashBtn, trashWindow);
 	trashBtn.addEventListener('click', () => 
 	{
 		toggleTrash();
 	});
 	trashWindow.querySelector("#trash_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("trash");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("trash");
 	});
 
 	const searchBtn = toolbar.querySelector('#search');
 	const searchWindow = toolbar.querySelector('#search_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.initialize(searchBtn, searchWindow);
+	searchBtn.appendChild(createTooltip("Search", "S", "Find element through tag name, id or classes."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.initialize(searchBtn, searchWindow);
 	searchBtn.addEventListener('click', () => 
 	{
 		toggleSearch();
 	});
 	searchWindow.querySelector("#search_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("search");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("search");
 	});
 
 	const customCSSBtn = toolbar.querySelector('#custom_css');
 	const customCSSWindow = toolbar.querySelector('#custom_css_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customCSS.initialize(customCSSBtn, customCSSWindow);
+	customCSSBtn.appendChild(createTooltip("Custom CSS", ",", "Add custom CSS to whole page."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customCSS.initialize(customCSSBtn, customCSSWindow);
 	customCSSBtn.addEventListener('click', () => toggleCustomCSS());
 	customCSSWindow.querySelector("#custom_css_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("customCSS");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("customCSS");
 	});
 
 	const customJSBtn = toolbar.querySelector('#custom_js');
 	const customJSWindow = toolbar.querySelector('#custom_js_window');
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customJS.initialize(customJSBtn, customJSWindow);
+	customJSBtn.appendChild(createTooltip("Custom JS", ";", "Add custom JS to whole page."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customJS.initialize(customJSBtn, customJSWindow);
 	customJSBtn.addEventListener('click', () => toggleCustomJS());
 	customJSWindow.querySelector("#custom_js_close").addEventListener('click', () => 
 	{
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("customJS");
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("customJS");
 	});
 
 	toolbar.querySelector('#close').addEventListener('click', () => 
@@ -5227,8 +5249,8 @@ function togglePlayback(e, btn)
 	state.paused = !state.paused;
 	if (state.paused)
 	{
-		btn.innerHTML = _utils_svg__WEBPACK_IMPORTED_MODULE_7__["default"].play;
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.style.setVisibility(false);
+		btn.innerHTML = _utils_svg__WEBPACK_IMPORTED_MODULE_8__["default"].play;
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.style.setVisibility(false);
 
 		if (state.target.mark)
 		{
@@ -5236,81 +5258,81 @@ function togglePlayback(e, btn)
 			state.target = new _target__WEBPACK_IMPORTED_MODULE_5__["default"]();
 		}
 	}
-	else btn.innerHTML = _utils_svg__WEBPACK_IMPORTED_MODULE_7__["default"].pause;
+	else btn.innerHTML = _utils_svg__WEBPACK_IMPORTED_MODULE_8__["default"].pause;
 
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.togglePlayback", status: state.paused });
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.togglePlayback", status: state.paused });
 }
 
 function toggleGuidelines()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.guidelines.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("guidelines");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("guidelines");
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.toggleGuidelines", status: _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.guidelines.isEnabled() });
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.guidelines.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("guidelines");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("guidelines");
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleGuidelines", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.guidelines.isEnabled() });
 }
 
 function toggleGrid()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.grids.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("grids");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("grids");
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.toggleGrid", status: _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.grids.isEnabled() });
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("grids");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("grids");
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleGrid", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.isEnabled() });
 }
 
 function toggleEdit()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.edit.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("edit");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("edit");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.edit.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("edit");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("edit");
 
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.toggleEdit", status: _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.edit.isEnabled() });
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleEdit", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.edit.isEnabled() });
 }
 
 function toggleFonts()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.fonts.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("fonts");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("fonts");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.fonts.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("fonts");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("fonts");
 }
 
 function togglePalette()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.palette.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("palette");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("palette");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.palette.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("palette");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("palette");
 }
 
 function toggleTrash()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("trash");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("trash");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("trash");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("trash");
 
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.toggleTrash", status: _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.isEnabled() });
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleTrash", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.isEnabled() });
 }
 
 function toggleSearch()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("search");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("search");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("search");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("search");
 
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.toggleSearch", status: _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.isEnabled() });
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleSearch", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.isEnabled() });
 }
 
 function toggleCustomCSS()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customCSS.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("customCSS");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("customCSS");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customCSS.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("customCSS");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("customCSS");
 }
 
 function toggleCustomJS()
 {
-	if (_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.customJS.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].disable("customJS");
-	else _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].enable("customJS");
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.customJS.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("customJS");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("customJS");
 }
 
 function dockWindow(e)
 {
-	if (state.enabled && !state.paused && _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.style.isEnabled())
+	if (state.enabled && !state.paused && _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.style.isEnabled())
 	{
 		e.preventDefault();
 		e.stopImmediatePropagation();
 
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.style.dockWindow();
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.style.dockWindow();
 	}
 }
 
@@ -5340,11 +5362,11 @@ function move(element)
 		if (state.target.mark) state.target.mark.remove();
 
 		const newTarget = new _target__WEBPACK_IMPORTED_MODULE_5__["default"]();
-		newTarget.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_6__["default"])(element, false);
+		newTarget.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_7__["default"])(element, false);
 		newTarget.element = element;
 
 		state.target = newTarget;
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].setTarget(state.target);
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].setTarget(state.target);
 	}
 }
 
@@ -5362,7 +5384,7 @@ function loop()
         toolbar.style.top = `${y}px`;
 	}
 
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.style.loop();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.style.loop();
 
 	requestAnimationFrame(loop);
 }
@@ -5376,7 +5398,7 @@ function update(element)
 	else if (element.tagName.toLowerCase().startsWith("hv-"))
 	{
 		state.hidden = true;
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.style.setVisibility(false);
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.style.setVisibility(false);
 
 		if (state.target.mark) state.target.mark.remove();
 		state.target = new _target__WEBPACK_IMPORTED_MODULE_5__["default"]();
@@ -5387,12 +5409,12 @@ function update(element)
 		if (state.target.mark) state.target.mark.remove();
 
 		const newTarget = new _target__WEBPACK_IMPORTED_MODULE_5__["default"]();
-		newTarget.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_6__["default"])(element, false, "", false);
+		newTarget.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_7__["default"])(element, false, "", false);
 		newTarget.element = element;
 
 		state.target = newTarget;
 
-		_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].setTarget(state.target);
+		_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].setTarget(state.target);
 	}
 }
 
@@ -5403,7 +5425,7 @@ function onClick(e)
 	e.preventDefault();
 	e.stopImmediatePropagation();
 
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].onClick();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].onClick();
 } 
 
 function enable()
@@ -5413,7 +5435,7 @@ function enable()
 	window.addEventListener("message", listenForMessage);
 
 	setupToolbar();
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].initialize();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].initialize();
 
 	if (!window.hvGoogleFont)
 	{ 
@@ -5448,7 +5470,7 @@ function disable()
 	document.body.removeEventListener('click', onClick, true);
 	window.removeEventListener("message", listenForMessage);
 
-	_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].destroy();
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].destroy();
 
 	toolbar.getRootNode().host.remove();
 	toolbar = null;
@@ -5459,11 +5481,11 @@ function disable()
 
 function onKeyDown(e)
 {
-	if (state.enabled && _settings__WEBPACK_IMPORTED_MODULE_9__["default"].get().shortcuts)
+	if (state.enabled && _settings__WEBPACK_IMPORTED_MODULE_10__["default"].get().shortcuts)
 	{
 		const tag = e.target.tagName.toLowerCase();
 		if (e.key === "Escape" || e.key === "Esc") exit();
-		else if (tag.startsWith("hv-") || _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.edit.isElementFocused()) e.stopImmediatePropagation();	
+		else if (tag.startsWith("hv-") || _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.edit.isElementFocused()) e.stopImmediatePropagation();	
 		else if (e.key === ' ' || e.key === 'Spacebar') dockWindow(e);
 	    else if (e.key === 'ArrowLeft' || e.code === 37) traverse(e, "left");
 	    else if (e.key === 'ArrowUp' || e.code === 38) traverse(e, "up");
@@ -5480,7 +5502,7 @@ function onKeyDown(e)
 			else if (e.key === "t" || e.key === "T") toggleTrash();
 			else if (e.key === "s" || e.key === "S") toggleSearch();
 			else if (e.key === ",") toggleCustomCSS();
-			else if (e.key === ".") toggleCustomJS();
+			else if (e.key === ";") toggleCustomJS();
 		}
 	}
 }
@@ -5488,7 +5510,7 @@ function onKeyDown(e)
 function exit()
 {
 	disable();
-	Object(_postMessage__WEBPACK_IMPORTED_MODULE_10__["default"])({ action: "hv.inspect.exit" });
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.exit" });
 	
 	if (window === window.parent) _utils_msg__WEBPACK_IMPORTED_MODULE_1__["default"].sendMessage('inspect.disable', {});
 }
@@ -5517,49 +5539,49 @@ function listenForMessage(event)
 
 		case "hv.inspect.toggleGuidelines":
 		{
-			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.guidelines.isEnabled()) toggleGuidelines();
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.guidelines.isEnabled()) toggleGuidelines();
 		} break;
 
 		case "hv.inspect.toggleGrid":
 		{
-			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].secondary.grids.isEnabled()) toggleGrid();
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.isEnabled()) toggleGrid();
 		} break;
 
 		case "hv.inspect.toggleEdit":
 		{
-			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.edit.isEnabled()) toggleEdit();
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.edit.isEnabled()) toggleEdit();
 		} break;
 
 		case "hv.inspect.toggleTrash":
 		{
-			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.isEnabled()) toggleTrash();
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.isEnabled()) toggleTrash();
 		} break;
 
 		case "hv.inspect.toggleSearch":
 		{
-			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.isEnabled()) toggleSearch();
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.isEnabled()) toggleSearch();
 		} break;
 
 		case "hv.inspect.search.find":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.findElements(event.data.selector);
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.findElements(event.data.selector);
 		} break;
 
 		case "hv.inspect.search.reset":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.search.reset();
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.search.reset();
 		} break;
 
 		case "hv.trash.setMode":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.setMode(event.data.mode)
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.setMode(event.data.mode)
 		} break;
 
 		case "hv.trash.addToElements":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.addToElements(
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.addToElements(
 				null, 
-				_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.getMode(), 
+				_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.getMode(), 
 				{ 
 					tag_name: event.data.tag_name, 
 					selector: event.data.selector, 
@@ -5572,7 +5594,7 @@ function listenForMessage(event)
 
 		case "hv.trash.hideElement":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.hideElement(
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.hideElement(
 				event.data.unique_selector, 
 				event.data.mode,
 				event.data.href
@@ -5581,7 +5603,7 @@ function listenForMessage(event)
 
 		case "hv.trash.showElement":
 		{
-			_tools_tools__WEBPACK_IMPORTED_MODULE_8__["default"].primary.trash.showElement(
+			_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].primary.trash.showElement(
 				event.data.unique_selector, 
 				event.data.mode, 
 				event.data.display, 
@@ -5608,12 +5630,15 @@ function listenForMessage(event)
 /*!*********************************************!*\
   !*** ./src/content_scripts/inspect/mark.js ***!
   \*********************************************/
-/*! exports provided: default, adjustPosition */
+/*! exports provided: default, adjustPosition, changeMarkColor, addAnimationToMark, removeAnimationFromMark */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "adjustPosition", function() { return adjustPosition; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "changeMarkColor", function() { return changeMarkColor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "addAnimationToMark", function() { return addAnimationToMark; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "removeAnimationFromMark", function() { return removeAnimationFromMark; });
 /* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../utils/element */ "./src/utils/element.js");
 
 
@@ -5622,8 +5647,9 @@ function mark(target, fixCheck, borderColor, noTag)
 {
 	const box = target.getBoundingClientRect();
 	const hvHover = document.createElement('hv-hover');
-	const shadow = hvHover.attachShadow({ mode: 'closed' });
+	const shadow = hvHover.attachShadow({ mode: 'open' });
 	const outline = document.createElement('div');
+	outline.id = "outline";
 
 	let position = "absolute";
 	let left = box.left + window.scrollX;
@@ -5641,13 +5667,47 @@ function mark(target, fixCheck, borderColor, noTag)
 	hvHover.style.top = `${top}px`;
 	hvHover.style.pointerEvents = `none`;
 	if (box.width === 0 && box.height === 0) hvHover.style.display = "none";
-	if (!borderColor) borderColor = "red";
+	if (!borderColor) borderColor = "red";	
+
+	const style = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+		<style>
+			.bounce {
+				animation: bounce .6s;
+			}
+
+			@keyframes bounce {
+				0% { transform: scale(1.2); opacity: 1 }
+				50% { transform: scale(1.75); opacity: .7; }
+				60% { transform: scale(0.75); opacity: 1 }
+				80% { transform: scale(1.1) }
+				100% { transform: scale(1) }
+			}
+		</style>
+	`);
+
+	const width = box.width - 2;
+	const height = box.height - 2;
+	outline.style.border = `1px solid ${borderColor}`;
+	outline.style.position = 'absolute';
+	outline.style.zIndex = "1";
+	outline.style.width = `${width}px`;
+	outline.style.height = `${height}px`;
+	outline.innerHTML = `
+		<div style="position: absolute; top: -2px; left: -2px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
+		<div style="position: absolute; top: ${height - 2}px; left: -2px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
+		<div style="position: absolute; top: -2px; left: ${width - 2}px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
+		<div style="position: absolute; top: ${height - 2}px; left: ${width - 2}px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
+	`;
+	shadow.appendChild(style);
+	shadow.appendChild(outline);
 
 	if (!noTag)
 	{
 		const tag = document.createElement('div');
+		tag.id = "tag";
 		tag.innerHTML = target.tagName.toUpperCase();
 		tag.style.position = "absolute";
+		tag.style.zIndex = "10";
 		tag.style.top = "-20px";
 		tag.style.left = "2px";
 		tag.style.height = "20px";
@@ -5664,29 +5724,36 @@ function mark(target, fixCheck, borderColor, noTag)
 		shadow.appendChild(tag);
 	}
 
-	const width = box.width - 2;
-	const height = box.height - 2;
-	outline.style.border = `1px solid ${borderColor}`;
-	outline.style.position = 'absolute';
-	outline.style.zIndex = "50000000";
-	outline.style.width = `${width}px`;
-	outline.style.height = `${height}px`;
-	outline.innerHTML = `
-		<div style="position: absolute; top: -2px; left: -2px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
-		<div style="position: absolute; top: ${height - 2}px; left: -2px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
-		<div style="position: absolute; top: -2px; left: ${width - 2}px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
-		<div style="position: absolute; top: ${height - 2}px; left: ${width - 2}px; width: 4px; height: 4px; border-radius: 50%; background: ${borderColor};"></div>
-	`;
-
-	shadow.appendChild(outline);
 	document.body.appendChild(hvHover);
 
 	return hvHover;
 }
 
-function unmark(mark)
+function changeMarkColor(mark, color)
 {
-	mark.remove();
+	const tag = mark.shadowRoot.querySelector("#tag");
+	const outline = mark.shadowRoot.querySelector("#outline");
+	const divs = outline.querySelectorAll("div");
+	
+	if (tag) tag.style.background = color; 
+	outline.style.borderColor = color;
+	for (const div of divs) div.style.background = color;
+}
+
+function addAnimationToMark(mark)
+{	
+	const outline = mark.shadowRoot.querySelector("#outline");
+	const tag = mark.shadowRoot.querySelector("#tag");
+	outline.classList.add("bounce");
+	tag.classList.add("bounce");
+}
+
+function removeAnimationFromMark(mark)
+{
+	const outline = mark.shadowRoot.querySelector("#outline");
+	const tag = mark.shadowRoot.querySelector("#tag");
+	outline.classList.remove("bounce");
+	tag.classList.remove("bounce");
 }
 
 function adjustPosition(element, mark)
@@ -7553,22 +7620,27 @@ function render()
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _target__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../target */ "./src/content_scripts/inspect/target.js");
-/* harmony import */ var _mark__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../mark */ "./src/content_scripts/inspect/mark.js");
-/* harmony import */ var _postMessage__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../postMessage */ "./src/content_scripts/inspect/postMessage.js");
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _mark__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../mark */ "./src/content_scripts/inspect/mark.js");
+/* harmony import */ var _postMessage__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../postMessage */ "./src/content_scripts/inspect/postMessage.js");
+/* harmony import */ var _style__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./style */ "./src/content_scripts/inspect/tools/style.js");
 
 
 
 
 
+
+
+const PINK = "#e91e63";
 const state = {
 	enabled: false,
 	toolbar_btn: null,
 	win: null,
+	elements_ul: null,
 	reset_btn: null,
 	input: null,
 	message: null,
 	targets: [],
-	focused: 0,
 	scroll_timer: null
 };
 
@@ -7576,6 +7648,7 @@ function initialize(btn, win)
 {
 	state.toolbar_btn = btn;
 	state.win = win;
+	state.elements_ul = state.win.querySelector("#elements");
 
 	state.input = win.querySelector("input");
 	state.message = win.querySelector("#message");
@@ -7584,7 +7657,7 @@ function initialize(btn, win)
 	{
 		const selector = e.target.value.trim(); 
 		findElements(selector);
-		if (window === window.parent) Object(_postMessage__WEBPACK_IMPORTED_MODULE_2__["default"])({ action: "hv.inspect.search.find", selector: selector });
+		if (window === window.parent) Object(_postMessage__WEBPACK_IMPORTED_MODULE_3__["default"])({ action: "hv.inspect.search.find", selector: selector });
  	});
 
 	state.reset_btn = win.querySelector("#search_reset");
@@ -7592,7 +7665,7 @@ function initialize(btn, win)
 	state.reset_btn.addEventListener('click', () => 
 	{
 		reset();
-		if (window === window.parent) Object(_postMessage__WEBPACK_IMPORTED_MODULE_2__["default"])({ action: "hv.inspect.search.reset" });
+		if (window === window.parent) Object(_postMessage__WEBPACK_IMPORTED_MODULE_3__["default"])({ action: "hv.inspect.search.reset" });
 	});
 }
 
@@ -7629,17 +7702,11 @@ function isEnabled()
 
 function scrollHandler()
 {
-	if (state.scroll_timer !== null) 
-	{
-        clearTimeout(state.scroll_timer);        
-    }
+	if (state.scroll_timer !== null) clearTimeout(state.scroll_timer);        
 
     state.scroll_timer = setTimeout(() => 
     {
-    	for (const target of state.targets)
-    	{
-    		Object(_mark__WEBPACK_IMPORTED_MODULE_1__["adjustPosition"])(target.element, target.mark);
-    	}
+    	for (const t of state.targets) Object(_mark__WEBPACK_IMPORTED_MODULE_2__["adjustPosition"])(t.target.element, t.target.mark);
     }, 100);
 }
 
@@ -7653,9 +7720,12 @@ function findElements(selector)
 	}
 
 	state.message.style.display = "block";
-	state.focused = 0;
 
-	for (const target of state.targets) target.mark.remove();
+	for (const t of state.targets) 
+	{
+		t.target.mark.remove();
+		t.li.remove();
+	}
 	state.targets = [];
 
 	try 
@@ -7676,12 +7746,43 @@ function findElements(selector)
 				{
 					const target = new _target__WEBPACK_IMPORTED_MODULE_0__["default"]();
 					target.element = element;
-					target.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_1__["default"])(element, true, "#e91e63");
-					state.targets.push(target);
+					target.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_2__["default"])(element, true, "#e91e63");
+
+					const li = _utils_element__WEBPACK_IMPORTED_MODULE_1__["default"].create(`
+						<li>
+							<div>
+								<h4>${element.tagName}</h4>
+								<p>${_utils_element__WEBPACK_IMPORTED_MODULE_1__["default"].getUniqueSelector(element)}</p>
+							</div>
+						</li>
+					`);
+					li.addEventListener("mouseover", () => 
+					{
+						Object(_mark__WEBPACK_IMPORTED_MODULE_2__["changeMarkColor"])(target.mark, "red");
+						Object(_mark__WEBPACK_IMPORTED_MODULE_2__["addAnimationToMark"])(target.mark);
+					});
+					li.addEventListener("mouseout", () => 
+					{
+						Object(_mark__WEBPACK_IMPORTED_MODULE_2__["changeMarkColor"])(target.mark, PINK);
+						Object(_mark__WEBPACK_IMPORTED_MODULE_2__["removeAnimationFromMark"])(target.mark);
+					});
+
+					const button = _utils_element__WEBPACK_IMPORTED_MODULE_1__["default"].create("<button>Show styles</button>");
+					button.addEventListener('click', () => 
+					{
+						_style__WEBPACK_IMPORTED_MODULE_4__["default"].setTargetAndCreateWindow(target);
+					});
+					li.appendChild(button);
+					state.elements_ul.appendChild(li);
+
+					state.targets.push({
+						li,
+						target
+					});
 				}
 			}
 
-			scroll();
+			scroll(elements[0]);
 		}
 		else
 		{
@@ -7698,16 +7799,19 @@ function findElements(selector)
 
 function reset()
 {
-	for (const target of state.targets) target.mark.remove();
+	for (const t of state.targets) 
+	{
+		t.target.mark.remove();
+		t.li.remove();
+	}
 	state.targets = [];
 	state.reset_btn.style.display = "none";
 	state.input.value = "";
 	state.message.style.display = "none"; 
 }
 
-function scroll()
+function scroll(element)
 {
-	const element = state.targets[state.focused].element;
 	const box = element.getBoundingClientRect();
 	window.scrollTo(0, box.top - 100);
 }
@@ -8035,7 +8139,7 @@ function renderMetaInfo(colors, fonts, attribs, scroll, element)
 	scroll.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create("<div class='divider'></div>"));
 }
 
-function setTarget(target)
+function setTarget(target, callback)
 {
 	if (!state.enabled || !state.inspectWindow || state.calculating) return;
 
@@ -8109,6 +8213,7 @@ function setTarget(target)
 			}
 
 			state.calculating = false;
+			if (callback) callback();
 		});
 	}, 0);
 }
@@ -8224,6 +8329,13 @@ function dockWindow()
 	{
 		const element = dockedWindow.target.element;
 		Object(_utils_utility__WEBPACK_IMPORTED_MODULE_10__["copyText"])(element.tagName.toLowerCase() + "" + _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].getSelector(element));
+		_utils_modal__WEBPACK_IMPORTED_MODULE_8__["default"].show("Copied!");
+	});
+
+	copyDropdown.querySelector("#copy_unique_selector").addEventListener("click", () => 
+	{
+		const element = dockedWindow.target.element;
+		Object(_utils_utility__WEBPACK_IMPORTED_MODULE_10__["copyText"])(_utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].getUniqueSelector(element));
 		_utils_modal__WEBPACK_IMPORTED_MODULE_8__["default"].show("Copied!");
 	});
 
@@ -8620,6 +8732,26 @@ function setVisibility(status)
 	}
 }
 
+function setTargetAndCreateWindow(target)
+{
+	state.enabled = true;
+	state.inspectWindow = Object(_ui_inspectWindow__WEBPACK_IMPORTED_MODULE_2__["createInspectWindow"])(false);
+	
+	setTarget(target, () => 
+	{
+		const box = target.element.getBoundingClientRect();
+		const x = box.left + box.width / 2;
+		const y = box.top + box.height / 2;
+		state.inspectWindow.style.left = `${x}px`;
+		state.inspectWindow.style.top = `${y}px`;
+		dockWindow();
+
+		state.enabled = false;
+		state.inspectWindow.remove();
+		state.inspectWindow = null;
+	});
+}
+
 function onClick()
 {
 	dockWindow();
@@ -8639,7 +8771,8 @@ function onClick()
 	loop,
 	setVisibility,
 	calculateSelectorStyle,
-	dockWindow
+	dockWindow,
+	setTargetAndCreateWindow
 });
 
 /***/ }),
@@ -9363,12 +9496,13 @@ function createInspectWindow(isDocked)
 
 	if (isDocked)
 	{
-		const copyDropdown = _utils_element__WEBPACK_IMPORTED_MODULE_1__["default"].create(`<div class="dropdown" style="width: 140px;"></div>`);
+		const copyDropdown = _utils_element__WEBPACK_IMPORTED_MODULE_1__["default"].create(`<div class="dropdown" style="width: 160px;"></div>`);
 		copyDropdown.innerHTML = `
 			<ul>
 				<li id="copy_code">Copy code</li>
 				<li id="copy_changes">Copy changes</li>
 				<li id="copy_selector">Copy selector</li>
+				<li id="copy_unique_selector">Copy unique selector</li>
 			</ul>
 		`;
 		inspectWindow.querySelector("#copy").appendChild(copyDropdown);
@@ -9474,8 +9608,10 @@ function createToolbar()
                     </ul>
                     <div class="content">
                         <input type="text" placeholder="Search by #id, .class, tag" spellcheck="false"/>
+
+                        <span id="message">No element found</span>
                     </div>
-                    <span id="message">No element found</span>
+                    <ul id="elements"></ul>
                 </div>
             </li>
 

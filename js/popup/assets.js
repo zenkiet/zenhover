@@ -2872,7 +2872,7 @@ function addImages(zip)
 		for (let i = 0; i < state.images.length; i++)
 		{
 			const url = state.images[i];
-			const name = Object(_helpers__WEBPACK_IMPORTED_MODULE_7__["getFileName"])(url, "jpg", [".jpg", ".png", ".webp", ".gif"]);
+			const name = Object(_helpers__WEBPACK_IMPORTED_MODULE_7__["getFileName"])(url, "jpg", [".jpg", ".png", ".webp", ".gif", ".svg"]);
 
 			JSZipUtils.getBinaryContent(url, function (err, data) 
 			{
@@ -3185,7 +3185,7 @@ function ImagesTab(tabs)
                 {
                     this.images.push({
                         src,
-                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "jpg", [".jpg", ".png", ".webp", ".gif"]),
+                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "jpg", [".jpg", ".png", ".webp", ".gif", ".svg"]),
                         sizeNumber: 0,
                         sizeString: "0kb",
                         onSizeChange: null,

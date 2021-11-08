@@ -43,7 +43,7 @@
 /******/
 /******/ 	// script path function
 /******/ 	function jsonpScriptSrc(chunkId) {
-/******/ 		return __webpack_require__.p + "" + chunkId + "." + "69ed10cb6bdb58b8a96b" + ".js"
+/******/ 		return __webpack_require__.p + "" + chunkId + "." + "7fa0c2c1900cf0e90d7c" + ".js"
 /******/ 	}
 /******/
 /******/ 	// The require function
@@ -5193,165 +5193,189 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var file_saver__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! file-saver */ "./node_modules/file-saver/dist/FileSaver.min.js");
 /* harmony import */ var file_saver__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(file_saver__WEBPACK_IMPORTED_MODULE_2__);
 /* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../utils/store */ "./src/utils/store.js");
+/* harmony import */ var _utils_fs__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../utils/fs */ "./src/utils/fs.js");
+/* harmony import */ var _utils_platform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../utils/platform */ "./src/utils/platform.js");
 
 
 
 
 
+
+
+
+
+const FIREFOX_SCROLL_OFFSET = 17;
 
 const container = document.querySelector(".container");
 const saveZip = document.getElementById("save_zip");
 const savePdf = document.getElementById("save_pdf");
 const state = {
-	urls: []
-}
+	uris: []
+};
 
-const params = decodeURI(window.location.href.split('?')[1])
-.split('&')
-.map(param => param.split('='))
-.reduce((values, [ key, value ]) => 
-{
-	values[key] = value
-	return values
-}, 
-{});
 
-if (params.u)
+(async () => 
 {
-	const decodedData = window.atob(params.u);
-	if (decodedData)
+	try
 	{
-		state.urls = JSON.parse(decodedData);
+		const screenshots = await _utils_store__WEBPACK_IMPORTED_MODULE_4__["default"].get("screenshots");
+		if (_utils_platform__WEBPACK_IMPORTED_MODULE_6__["default"].browser.name === "Firefox")
+		{
+			const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create("<canvas></canvas>");
+			const context = canvas.getContext("2d");
+
+			const stripScrollbar = (index) => 
+			{
+				const image = new Image();
+				image.onload = () => 
+				{
+					canvas.width = image.width - FIREFOX_SCROLL_OFFSET;
+					canvas.height = image.height; 
+					context.drawImage(image, 0, 0);
+
+					state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = canvas.toDataURL("image/png");
+
+					if (index === 0) createScreenshots();
+					else stripScrollbar(index - 1);
+				}
+				image.src = screenshots[index];
+			}
+
+			stripScrollbar(screenshots.length - 1);
+		}
+		else
+		{	
+			for (const screenshot of screenshots) state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = screenshot;
+			createScreenshots();
+		} 
 	}
-}
+	catch (err)
+	{
+		console.log(err);
+	}
+})();
 
-for (let i in state.urls)
-{
-	const url = state.urls[i];
-	const urlArr = url.split('/');
-	const fileName = urlArr[urlArr.length - 1].split(".")[0];
-
-	createScreenshot(url, fileName)
-}
-
-function getJPEG(url, callback) 
+function getJPEG(URI, callback) 
 {
     var img = new Image();
-    img.onError = () => console.log('Cannot load image: "'+url+'"');
+    img.onError = () => console.log('Cannot load image: "'+URI+'"');
     img.onload = () => callback(img);
-    img.src = url;
+    img.src = URI;
 }
 
-function createScreenshot(url, fileName)
+function createScreenshots()
 {
-	const screenshot = document.createElement('div');
-	screenshot.classList.add("screenshot");
+	for (const [fileName, URI] of Object.entries(state.uris))
+	{
+		const screenshot = document.createElement('div');
+		screenshot.classList.add("screenshot");
 
-	const img = document.createElement('img');
-	img.src = url; 
+		const img = document.createElement('img');
+		img.src = URI; 
 
-	const options = document.createElement('div');
-	options.classList.add("options");
-	options.innerHTML = `
-		<h3>${fileName}</h3>
-		<div class="space"></div>
-		<a href='${url}' download='${fileName}.png'>
+		const options = document.createElement('div');
+		options.classList.add("options");
+		options.innerHTML = `
+			<h3>${fileName}</h3>
+			<div class="space"></div>
+			<a href='${URI}' download='${fileName}.png'>
+				<button>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+						<polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>
+					</svg>
+					<span>Save PNG</span>
+				</button>
+			</a>
+		`;
+
+		const saveJPG = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create(`
 			<button>
 				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
 					<polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>
 				</svg>
-				<span>Save PNG</span>
+				<span>Save JPEG</span>
 			</button>
-		</a>
-	`;
-
-	const saveJPG = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create(`
-		<button>
-			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-				<polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline>
-			</svg>
-			<span>Save JPEG</span>
-		</button>
-	`);
-	saveJPG.addEventListener("click", () => 
-	{
-		getJPEG(url, (image) => 
+		`);
+		saveJPG.addEventListener("click", () => 
 		{
-			const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create(`
-				<canvas 
-					style="display: none" 
-					width="${image.width}" 
-					height="${image.height}"></canvas>
-			`);
-			const context = canvas.getContext("2d");
-			context.drawImage(image, image.x, image.y);
-			const imgDatajpeg = canvas.toDataURL("image/jpeg");
-			Object(file_saver__WEBPACK_IMPORTED_MODULE_2__["saveAs"])(imgDatajpeg, `${fileName}.jpeg`);
+			getJPEG(URI, (image) => 
+			{
+				const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create(`
+					<canvas 
+						style="display: none" 
+						width="${image.width}" 
+						height="${image.height}"></canvas>
+				`);
+				const context = canvas.getContext("2d");
+				context.drawImage(image, image.x, image.y);
+				const imgDatajpeg = canvas.toDataURL("image/jpeg");
+				Object(file_saver__WEBPACK_IMPORTED_MODULE_2__["saveAs"])(imgDatajpeg, `${fileName}.jpeg`);
+			});
 		});
-	});
 
-	options.appendChild(saveJPG);
+		options.appendChild(saveJPG);
 
-	screenshot.appendChild(img);
-	screenshot.appendChild(options);
-	container.appendChild(screenshot);
+		screenshot.appendChild(img);
+		screenshot.appendChild(options);
+		container.appendChild(screenshot);
+	}
+
+	setupPDF();
+	setupZIP();
 }
 
-savePdf.addEventListener("click", () => 
+function setupPDF()
 {
-	let doc = null;
-	let totalImages = state.urls.length;
-
-	const dummyPdf = new jspdf__WEBPACK_IMPORTED_MODULE_1__["jsPDF"]();
-	const width = dummyPdf.internal.pageSize.getWidth();
-
-	const addToPdf = (image) => 
+	savePdf.addEventListener("click", () => 
 	{
-		const height = (image.height * width) / image.width;
-		if (!doc) doc = new jspdf__WEBPACK_IMPORTED_MODULE_1__["jsPDF"]({format: [width, height]});  
-		else doc.addPage([width, height]);
-		
-		doc.addImage(image, 'JPEG', 0, 0, width, height, 'image');
-		
-		totalImages--;
-		if (totalImages === 0) doc.save("screenshots.pdf");
-	}
+		const dummyPdf = new jspdf__WEBPACK_IMPORTED_MODULE_1__["jsPDF"]();
+		const width = dummyPdf.internal.pageSize.getWidth();
 
-	for (let i = 0; i < state.urls.length; i++)
-	{
-		getJPEG(state.urls[0], addToPdf);
-	}
-});
-
-saveZip.addEventListener("click", () => 
-{
-	const zip = new jszip__WEBPACK_IMPORTED_MODULE_0___default.a();
-
-	let doneImages = 0;
-	for (let i = 0; i < state.urls.length; i++)
-	{
-		const url = state.urls[i];
-		const urlArr = url.split('/');
-		const fileName = urlArr[urlArr.length - 1];
-		JSZipUtils.getBinaryContent(url, function (err, data) 
+		getJPEG(state.uris[Object.keys(state.uris)[0]], (image) => 
 		{
-			if (err) console.log(err);
-			
-			zip.file(`${fileName}`, data, { binary: true });
-			doneImages++;
-
-			if (doneImages === state.urls.length) 
+			const height = (image.height * width) / image.width;
+		   	const doc = new jspdf__WEBPACK_IMPORTED_MODULE_1__["jsPDF"]({format: [width, height]});  
+	
+			for (const [fileName, URI] of Object.entries(state.uris))
 			{
-				zip.generateAsync({ type: 'blob' }).then((content) => 
-				{
-					Object(file_saver__WEBPACK_IMPORTED_MODULE_2__["saveAs"])(content, "screenshots.zip");
-				});
+				doc.addImage(URI, 'JPEG', 0, 0, width, height, fileName, 'FAST');	
 			}
+			
+			doc.save("screenshots.pdf");
 		});
-	}
-});
+	});
+}
+
+function setupZIP()
+{
+	saveZip.addEventListener("click", () => 
+	{
+		const zip = new jszip__WEBPACK_IMPORTED_MODULE_0___default.a();
+
+		let doneImages = 0;
+		for (const [fileName, URI] of Object.entries(state.uris))
+		{
+			JSZipUtils.getBinaryContent(URI, function (err, data) 
+			{
+				if (err) console.log(err);
+				
+				zip.file(`${fileName}`, data, { binary: true });
+				doneImages++;
+
+				if (doneImages === Object.keys(state.uris).length) 
+				{
+					zip.generateAsync({ type: 'blob' }).then((content) => 
+					{
+						Object(file_saver__WEBPACK_IMPORTED_MODULE_2__["saveAs"])(content, "screenshots.zip");
+					});
+				}
+			});
+		}
+	});
+}
 
 /***/ }),
 
@@ -5476,6 +5500,306 @@ function getSource(element)
     getSource,
     getUniqueSelector
 });
+
+/***/ }),
+
+/***/ "./src/utils/fs.js":
+/*!*************************!*\
+  !*** ./src/utils/fs.js ***!
+  \*************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+
+
+function generateFileName()
+{
+	const date = new Date();
+	const day = date.getDay();
+	const month = date.getMonth() + 1;
+	const year = date.getFullYear();
+
+	return (
+		`${day}-${month}-${year}_${randomString(10)}`
+	);
+}
+
+function getBlob(dataURI) 
+{
+	const byteString = atob(dataURI.split(',')[1]);
+
+    // separate out the mime component
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+    // write the bytes of the string to an ArrayBuffer
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) 
+    {
+        ia[i] = byteString.charCodeAt(i);
+    }
+
+    // create a blob for writing to a file
+    const blob = new Blob([ab], {type: mimeString});
+    return blob;
+}
+
+function saveBlob(blob, filename, callback, errback) 
+{
+	const onwriteend = () => 
+	{
+        callback (
+        	'filesystem:chrome-extension://' 
+        	+ chrome.i18n.getMessage('@@extension_id') 
+        	+'/temporary/' + filename
+    	);
+    }
+
+    // come up with file-system size with a little buffer
+    var size = blob.size + (1024 / 2);
+
+    // create a blob for writing to a file
+    var reqFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+    reqFileSystem(window.TEMPORARY, size, (fs) =>
+    {
+        fs.root.getFile(filename, {create: true}, (fileEntry) =>
+        {
+            fileEntry.createWriter((fileWriter) => 
+            {
+                fileWriter.onwriteend = onwriteend;
+                fileWriter.write(blob);
+            }, errback);
+
+        }, errback);
+
+    }, errback);
+}
+
+function randomString(length) 
+{
+	let result = '';
+	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	const charactersLength = characters.length;
+	for (let i = 0; i < length; i++) 
+	{
+		result += characters.charAt(Math.floor(Math.random() * charactersLength));
+	}
+	
+	return result;
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+	generateFileName, 
+	getBlob,
+	saveBlob
+});
+
+/***/ }),
+
+/***/ "./src/utils/platform.js":
+/*!*******************************!*\
+  !*** ./src/utils/platform.js ***!
+  \*******************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+
+
+const header = [
+	navigator.platform, 
+	navigator.userAgent, 
+	navigator.appVersion, 
+	navigator.vendor, 
+	window.opera
+];
+
+const dataos = [
+    { name: 'Windows Phone', value: 'Windows Phone', version: 'OS' },
+    { name: 'Windows', value: 'Win', version: 'NT' },
+    { name: 'iPhone', value: 'iPhone', version: 'OS' },
+    { name: 'iPad', value: 'iPad', version: 'OS' },
+    { name: 'Kindle', value: 'Silk', version: 'Silk' },
+    { name: 'Android', value: 'Android', version: 'Android' },
+    { name: 'PlayBook', value: 'PlayBook', version: 'OS' },
+    { name: 'BlackBerry', value: 'BlackBerry', version: '/' },
+    { name: 'Macintosh', value: 'Mac', version: 'OS X' },
+    { name: 'Linux', value: 'Linux', version: 'rv' },
+    { name: 'Palm', value: 'Palm', version: 'PalmOS' }
+];
+
+const databrowser = [
+    { name: 'Chrome', value: 'Chrome', version: 'Chrome' },
+    { name: 'Firefox', value: 'Firefox', version: 'Firefox' },
+    { name: 'Safari', value: 'Safari', version: 'Version' },
+    { name: 'Internet Explorer', value: 'MSIE', version: 'MSIE' },
+    { name: 'Opera', value: 'Opera', version: 'Opera' },
+    { name: 'BlackBerry', value: 'CLDC', version: 'CLDC' },
+    { name: 'Mozilla', value: 'Mozilla', version: 'Mozilla' }
+];
+
+function matchItem(string, data)
+{
+	let i = 0,
+        j = 0,
+        html = '',
+        regex,
+        regexv,
+        match,
+        matches,
+        version;
+    
+    for (i = 0; i < data.length; i += 1) 
+    {
+        regex = new RegExp(data[i].value, 'i');
+        match = regex.test(string);
+        if (match) 
+        {
+            regexv = new RegExp(data[i].version + '[- /:;]([\\d._]+)', 'i');
+            matches = string.match(regexv);
+            version = '';
+            if (matches) { if (matches[1]) { matches = matches[1]; } }
+            if (matches)
+            {
+                matches = matches.split(/[._]+/);
+                for (j = 0; j < matches.length; j += 1) 
+                {
+                    if (j === 0) 
+                    {
+                        version += matches[j] + '.';
+                    } 
+                    else 
+                    {
+                        version += matches[j];
+                    }
+                }
+            } 
+            else 
+            {
+                version = '0';
+            }
+
+            return {
+                name: data[i].name,
+                version: parseFloat(version)
+            };
+        }
+    }
+    return { name: 'unknown', version: 0 };
+}
+
+const agent = header.join(' '),
+    os = matchItem(agent, dataos),
+    browser = matchItem(agent, databrowser);
+
+/* harmony default export */ __webpack_exports__["default"] = ({ os: os, browser: browser });       
+
+/***/ }),
+
+/***/ "./src/utils/polyfill.js":
+/*!*******************************!*\
+  !*** ./src/utils/polyfill.js ***!
+  \*******************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+
+
+const setLocalStorage = (data) => new Promise((resolve, reject) => 
+{
+	chrome.storage.local.set(data, () =>
+	{
+		chrome.runtime.lastError ? reject(Error(chrome.runtime.lastError.message)) : resolve();
+    });
+});
+
+const getLocalStorage = (keys) => new Promise((resolve, reject) =>
+{
+    chrome.storage.local.get(keys, (result) =>
+    {
+        chrome.runtime.lastError ? reject(Error(chrome.runtime.lastError.message)) : resolve(result);
+    });
+});
+
+const executeScript = (tabId, options) => new Promise((resolve, reject) => 
+{
+	chrome.tabs.executeScript(tabId, options,
+	_ =>
+	{
+		let e = chrome.runtime.lastError;
+		if (e !== undefined)
+		{
+			reject(e);
+		}
+		else
+		{
+			resolve();
+		}
+	});
+});
+
+const captureVisibleArea = () => new Promise((resolve, reject) => 
+{
+	chrome.tabs.captureVisibleTab(null, {format: "png"}, (dataURI) => 
+	{
+		resolve(dataURI);
+	});
+});
+
+/* harmony default export */ __webpack_exports__["default"] = ({ 
+	setLocalStorage, 
+	getLocalStorage, 
+	executeScript,
+	captureVisibleArea
+});
+
+/***/ }),
+
+/***/ "./src/utils/store.js":
+/*!****************************!*\
+  !*** ./src/utils/store.js ***!
+  \****************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _polyfill__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./polyfill */ "./src/utils/polyfill.js");
+
+
+
+const set = async (info) =>
+{
+	try
+	{
+		const res = await _polyfill__WEBPACK_IMPORTED_MODULE_0__["default"].setLocalStorage(info);
+	}	
+	catch (err)
+	{
+		console.log(err);
+		return err;
+	}
+}
+
+const get = async (key) => 
+{
+	try
+	{
+		const result = await _polyfill__WEBPACK_IMPORTED_MODULE_0__["default"].getLocalStorage(key);
+		return result[key];
+	}
+	catch (err)
+	{
+		return err;
+	}
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({ set, get });
 
 /***/ })
 
