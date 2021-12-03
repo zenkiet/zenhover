@@ -3865,10 +3865,7 @@ function get()
 	for (const video of videoNodes)
 	{
 		let src = "";
-		if (video.src)
-		{
-			src = video.src;
-		}
+		if (video.src) src = video.src;
 		else
 		{
 			const source = video.querySelector("source");
@@ -3907,6 +3904,461 @@ function getBackgroundImages()
 
 /* harmony default export */ __webpack_exports__["default"] = ({
 	get
+});
+
+/***/ }),
+
+/***/ "./src/content_scripts/capture/capture.js":
+/*!************************************************!*\
+  !*** ./src/content_scripts/capture/capture.js ***!
+  \************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utils_msg__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../utils/msg */ "./src/utils/msg.js");
+/* harmony import */ var _utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../utils/globalStyles */ "./src/utils/globalStyles.js");
+/* harmony import */ var _selected_area_selectedArea__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./selected_area/selectedArea */ "./src/content_scripts/capture/selected_area/selectedArea.js");
+
+
+
+
+
+const CAPTURE_DELAY = 300;
+const CLEAN_UP_DELAY = 2000;
+const SCROLL_PAD = 200;
+const state = {
+	original_x: 0,
+	original_y: 0,
+	arrangements: [],
+	num_arrangements: 0,
+	clean_up_timeout: null,
+	stickies: [],
+	fixed: [],
+    style: null
+};
+
+function prepare()
+{
+	document.querySelector("head").appendChild(_utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__["hideScrollbarLink"]);
+    state.style = document.createElement('style');
+    state.style.innerHTML = `
+        html { 
+            scroll-behavior: auto !important; 
+        } 
+        * { 
+            -webkit-transition: none !important;
+            -moz-transition: none !important;
+            -o-transition: none !important;
+            transition: none !important;
+            animation-duration: 0s !important;
+        }
+    `;
+    document.body.appendChild(state.style);
+}
+
+function reset()
+{
+	_utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__["hideScrollbarLink"].remove();
+    state.style.remove();
+    state.style = null;
+}
+
+function prepareFullPage()
+{
+	prepare();
+
+	for (const element of document.querySelectorAll("body *"))
+	{
+		const position = window.getComputedStyle(element).getPropertyValue("position");
+		if (position.includes("sticky"))
+		{
+			let style = element.getAttribute("style");
+			if (!style) style = "";
+			state.stickies.push({ element, style });
+			element.setAttribute("style", `position: relative !important; inset: auto !important; top: 0px; ${style}`);
+		}
+
+        element.scrollTop = 0;
+	}
+
+	state.original_x = window.scrollX;
+	state.original_y = window.scrollY;
+    state.arrangements = [];
+    state.num_arrangements = 0;
+	state.page_height = Math.max(
+        document.body.scrollHeight || 0, 
+        document.documentElement.scrollHeight || 0,
+        document.body.offsetHeight || 0, 
+        document.documentElement.offsetHeight || 0,
+        document.body.clientHeight || 0, 
+        document.documentElement.clientHeight || 0
+    );
+    state.page_width = Math.max(
+        document.body.scrollWidth || 0, 
+        document.documentElement.scrollWidth || 0,
+        document.body.offsetWidth || 0, 
+        document.documentElement.offsetWidth || 0,
+        document.body.clientWidth || 0, 
+        document.documentElement.clientWidth || 0
+    );
+
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    
+    const yDelta = windowHeight - (windowHeight > SCROLL_PAD ? SCROLL_PAD : 0);
+    let yPos = 0;
+    while (yPos < state.page_height) 
+    {
+    	if (state.page_height - yPos < windowHeight)
+		{
+			state.arrangements.push([0, state.page_height - windowHeight]);
+			break;
+		}
+
+		state.arrangements.push([0, yPos]);
+        yPos += yDelta;
+    }
+
+    state.num_arrangements = state.arrangements.length;
+
+    processArrangements();
+}
+
+function cleanUp() 
+{
+    reset();
+    window.scrollTo(state.original_x, state.original_y);
+
+    for (const sticky of state.stickies) { sticky.element.setAttribute("style", sticky.style); }
+	state.stickies = [];
+
+	for (const fix of state.fixed) { fix.element.setAttribute("style", fix.style); }
+	state.fixed = [];
+} 
+
+function processArrangements()
+{
+	if (!state.arrangements.length) 
+	{
+        cleanUp();
+        return;
+    }
+
+    const next = state.arrangements.shift();
+	const x = next[0], y = next[1];
+    window.scrollTo(x, y);
+
+    var data = {
+        x: window.scrollX,
+        y: window.scrollY,
+        complete: (state.num_arrangements - state.arrangements.length) / state.num_arrangements,
+        window_width: window.innerWidth,
+        total_width: state.page_width,
+        total_height: state.page_height,
+        pixel_ratio: window.devicePixelRatio
+    };
+
+    window.setTimeout(() => 
+    {
+        // Hide elements with position fixed;
+        if (state.arrangements.length !== state.num_arrangements - 1)
+        {
+            for (const element of document.querySelectorAll("body *"))
+            {
+                const styles = window.getComputedStyle(element);
+                if (styles.getPropertyValue("position").includes("fixed"))
+                {
+                    const boundingBox = element.getBoundingClientRect();
+                    if (window.innerHeight - boundingBox.top > SCROLL_PAD)
+                    {
+                        let style = element.getAttribute("style");
+                        if (style) style = style.trim();
+                        if (style) if (!style.endsWith(";")) style = style+";" 
+                        else style = style = "";
+                        state.fixed.push({ element, style });
+                        element.setAttribute("style", `${style} position: absolute !important;`);
+                    }
+                }
+            }
+        }
+
+        capture(data);
+    }, CAPTURE_DELAY / 2);
+}
+
+function capture(data)
+{
+    window.setTimeout(() => 
+    {
+        state.clean_up_timeout = window.setTimeout(cleanUp, CLEAN_UP_DELAY);
+        _utils_msg__WEBPACK_IMPORTED_MODULE_0__["default"].sendMessage('screenshot.captureFragment', { data });
+    }, CAPTURE_DELAY);
+}
+
+function proceedCapture()
+{
+	window.clearTimeout(state.clean_up_timeout);
+    processArrangements();
+}
+
+function onKeyDown(e)
+{
+	if (_selected_area_selectedArea__WEBPACK_IMPORTED_MODULE_2__["default"].isEnabled() && 
+        (e.key === "Escape" || e.key === "Esc")) _selected_area_selectedArea__WEBPACK_IMPORTED_MODULE_2__["default"].exit();
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+	prepare,
+	reset,
+	prepareFullPage,
+	proceedCapture,
+    onKeyDown,
+    startSelectedAreaCapture: _selected_area_selectedArea__WEBPACK_IMPORTED_MODULE_2__["default"].startSelection
+});
+
+/***/ }),
+
+/***/ "./src/content_scripts/capture/selected_area/selectedArea.js":
+/*!*******************************************************************!*\
+  !*** ./src/content_scripts/capture/selected_area/selectedArea.js ***!
+  \*******************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _event__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../event */ "./src/content_scripts/event.js");
+/* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../utils/svg */ "./src/utils/svg.js");
+/* harmony import */ var _utils_msg__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../utils/msg */ "./src/utils/msg.js");
+
+
+
+
+
+
+let selectionRect = null;
+let hvSelectionOverlay = null;
+let shadow = null;
+let overlay = null;
+let topOutSelection = null;
+let rightOutSelection = null;
+let bottomOutSelection = null;
+let leftOutSelection = null;
+
+const state = {
+    enabled: false,
+    selection: false,
+    rect: {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0,
+        width: 0,
+        height: 0
+    }
+};
+
+function createOutSelection()
+{
+    const rect = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create('<div class="out-selection"></div>');
+    return rect;
+}
+
+function getXY()
+{
+    const {mx, my} = Object(_event__WEBPACK_IMPORTED_MODULE_1__["getMousePosition"])();
+    return {x: mx - window.scrollX, y: my - window.scrollY}; 
+}
+
+function resolvedRect()
+{
+    const largeX = state.rect.x1 > state.rect.x2 ? state.rect.x1 : state.rect.x2;
+    const largeY = state.rect.y1 > state.rect.y2 ? state.rect.y1 : state.rect.y2;
+    const smallX = largeX === state.rect.x1 ? state.rect.x2 : state.rect.x1;
+    const smallY = largeY === state.rect.y1 ? state.rect.y2 : state.rect.y1;
+
+    return { largeX, largeY, smallX, smallY };
+}
+
+function transformElement(element, top, left, width, height)
+{
+    element.style.top = `${top}px`;
+    element.style.left = `${left}px`;
+    element.style.width = `${width}px`;
+    element.style.height = `${height}px`;
+}
+
+function setSelection()
+{
+    const {largeX, largeY, smallX, smallY} = resolvedRect();
+    
+    const width = largeX - smallX;
+    const height = largeY - smallY;
+
+    if (width > 5 || height > 5)
+    {
+        selectionRect.style.display = "block";
+        transformElement(selectionRect, smallY, smallX, width, height);
+            
+        transformElement(topOutSelection, 0, 0, window.innerWidth, smallY);
+        transformElement(rightOutSelection, smallY, largeX, window.innerWidth - largeX, height);
+        transformElement(bottomOutSelection, largeY, 0, window.innerWidth, window.innerHeight - largeY);
+        transformElement(leftOutSelection, smallY, 0, smallX, height);
+    }
+    else 
+    {
+        selectionRect.style.display = "none";
+        transformElement(topOutSelection, 0, 0, window.innerWidth, window.innerHeight);
+        transformElement(rightOutSelection, 0, 0, 0, 0);
+        transformElement(bottomOutSelection, 0, 0, 0, 0);
+        transformElement(leftOutSelection, 0, 0, 0, 0);
+    } 
+}
+
+function select()
+{
+    if (state.selection)
+    {
+        const {x, y} = getXY();
+        state.rect.x2 = x;
+        state.rect.y2 = y;
+        setSelection();
+        
+        requestAnimationFrame(select);
+    }
+}
+
+function adjust()
+{
+    if (state.rect.x1) setSelection();
+}
+
+function startSelection()
+{
+    state.enabled = true;
+    window.addEventListener("resize", adjust);
+
+    hvSelectionOverlay = document.createElement('hv-selection-overlay');
+	hvSelectionOverlay.style.position = 'fixed';
+	hvSelectionOverlay.style.zIndex = `50000000`;
+
+    shadow = hvSelectionOverlay.attachShadow({ mode: 'closed' });
+    shadow.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<link href="${chrome.extension.getURL('css/global.css')}" rel="stylesheet" type="text/css">`));
+    shadow.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<link href="${chrome.runtime.getURL('css/capture/selectedArea.css')}" rel="stylesheet" type="text/css">`));
+
+    overlay = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create('<div class="overlay"></div>');
+    overlay.addEventListener("mousedown", (evt) => 
+    {
+        if (evt.buttons === 1) 
+        {
+            state.selection = true;
+            const {x, y} = getXY();
+            state.rect.x1 = x;
+            state.rect.y1 = y;
+            requestAnimationFrame(select);
+        }
+    });
+
+    overlay.addEventListener("mouseup", (evt) => 
+    {
+        if (evt.buttons === 0) state.selection = false;
+    });
+
+    selectionRect = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create('<div class="selection"></div>');
+    topOutSelection = createOutSelection();
+    topOutSelection.style.width = "100%";
+    topOutSelection.style.height = "100%";
+    rightOutSelection = createOutSelection();
+    bottomOutSelection = createOutSelection();
+    leftOutSelection = createOutSelection();
+
+    const actions = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+        <div class="actions">
+            <button id="cancel">${_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].x}</button>
+            <button id="reset">${_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].rotate}</button>
+            <button id="capture">${_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].camera}</button>
+        </div>
+    `);
+
+    actions.querySelector("#cancel").addEventListener("click", exit);
+    actions.querySelector("#reset").addEventListener("click", reset);
+    actions.querySelector("#capture").addEventListener("click", () => 
+    {
+        const rect = resolvedRect();
+        const width = rect.largeX - rect.smallX;
+        const height = rect.largeY - rect.smallY;
+        if (width > 5 || height > 5)
+        {
+            rect.width = window.innerWidth;
+            rect.height = window.innerHeight;
+            _utils_msg__WEBPACK_IMPORTED_MODULE_3__["default"].sendMessage("screenshot.captureSelectedArea", {rect});
+            exit();
+        }
+    });
+        
+    shadow.appendChild(overlay);
+    shadow.appendChild(selectionRect);
+    shadow.appendChild(topOutSelection);
+    shadow.appendChild(rightOutSelection);
+    shadow.appendChild(bottomOutSelection);
+    shadow.appendChild(leftOutSelection);
+    shadow.appendChild(actions);
+    document.body.appendChild(hvSelectionOverlay);
+}
+
+function reset()
+{
+    selectionRect.style.display = "none";
+    state.selection = false;
+    state.rect = {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0
+    };
+
+    transformElement(selectionRect, 0, 0, 0, 0);
+    transformElement(topOutSelection, 0, 0, window.innerWidth, window.innerHeight);
+    transformElement(rightOutSelection, 0, 0, 0, 0);
+    transformElement(bottomOutSelection, 0, 0, 0, 0);
+    transformElement(leftOutSelection, 0, 0, 0, 0);
+}
+
+function exit()
+{
+    state.enabled = false;
+
+    window.removeEventListener("resize", adjust);
+    state.selection = false;
+    state.rect = {
+        x1: 0,
+        y1: 0,
+        x2: 0,
+        y2: 0
+    };
+
+    hvSelectionOverlay.remove();
+    hvSelectionOverlay = null;
+    shadow = null;
+    overlay = null;
+    topOutSelection = null;
+    rightOutSelection = null;
+    bottomOutSelection = null;
+    leftOutSelection = null;
+}
+
+function isEnabled()
+{
+    return state.enabled;
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({ 
+    startSelection,
+    exit,
+    isEnabled
 });
 
 /***/ }),
@@ -4409,7 +4861,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _color_eyedropper_colorEyedropper__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./color_eyedropper/colorEyedropper */ "./src/content_scripts/color_eyedropper/colorEyedropper.js");
 /* harmony import */ var _assets_assets__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./assets/assets */ "./src/content_scripts/assets/assets.js");
 /* harmony import */ var _debug_debug__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./debug/debug */ "./src/content_scripts/debug/debug.js");
-/* harmony import */ var _screenshot_screenshot__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./screenshot/screenshot */ "./src/content_scripts/screenshot/screenshot.js");
+/* harmony import */ var _capture_capture__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./capture/capture */ "./src/content_scripts/capture/capture.js");
 /* harmony import */ var _settings__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./settings */ "./src/content_scripts/settings.js");
 
 
@@ -4465,6 +4917,7 @@ function initialize()
 	{	
 		_inspect_inspect__WEBPACK_IMPORTED_MODULE_5__["default"].onKeyDown(e);
 		_color_eyedropper_colorEyedropper__WEBPACK_IMPORTED_MODULE_6__["default"].onKeyDown(e);
+		_capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].onKeyDown(e);
 	});
 
 	const bodyList = document.querySelector("body");
@@ -4556,22 +5009,27 @@ function initialize()
 
 			case "screenshot.prepare": 
 			{
-				if (window === window.top) _screenshot_screenshot__WEBPACK_IMPORTED_MODULE_9__["default"].prepare();
+				if (window === window.top) _capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].prepare();
 			} break;
 
 			case "screenshot.prepareFullPage": 
 			{
-				if (window === window.top) _screenshot_screenshot__WEBPACK_IMPORTED_MODULE_9__["default"].prepareFullPage();
+				if (window === window.top) _capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].prepareFullPage();
 			} break;
 
 			case "screenshot.proceedCapture": 
 			{
-				if (window === window.top) _screenshot_screenshot__WEBPACK_IMPORTED_MODULE_9__["default"].proceedCapture();
+				if (window === window.top) _capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].proceedCapture();
 			} break;
 
 			case "screenshot.reset": 
 			{
-				if (window === window.top) _screenshot_screenshot__WEBPACK_IMPORTED_MODULE_9__["default"].reset();
+				if (window === window.top) _capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].reset();
+			} break;
+
+			case "screenshot.startSelectedAreaCapture": 
+			{
+				_capture_capture__WEBPACK_IMPORTED_MODULE_9__["default"].startSelectedAreaCapture();
 			} break;
 
 			case "settings.set":
@@ -4993,10 +5451,7 @@ async function initialize()
     	document.body.appendChild(window.hvStyleIframe);
     	window.hvStyleIframe.style.display = "none";
     }
-    else
-    {
-    	window.hvStyleIframe.contentDocument.body.innerHTML = "";
-    }
+    else window.hvStyleIframe.contentDocument.body.innerHTML = "";
 
 	const links = document.querySelectorAll("link");
 	for (const link of links)
@@ -5151,6 +5606,22 @@ function setupToolbar()
 		toggleGrid();
 	});
 
+	const cssBoxBtn = toolbar.querySelector('#css_box');
+	cssBoxBtn.appendChild(createTooltip("CSS Box", "C", "Visualize padding and margin."));
+	_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.cssBox.initialize(cssBoxBtn);
+	cssBoxBtn.addEventListener('click', () => 
+	{
+		toggleCssBox();
+	});
+
+	// const rulerBtn = toolbar.querySelector('#ruler');
+	// rulerBtn.appendChild(createTooltip("Ruler", "R", "Measure distance between elements."));
+	// tools.primary.ruler.initialize(rulerBtn);
+	// rulerBtn.addEventListener('click', () => 
+	// {
+	// 	toggleRuler();
+	// });
+
 	const fontsBtn = toolbar.querySelector('#fonts');
 	fontsBtn.appendChild(createTooltip("Fonts", "F", "Know what font each tag is using."));
 	const fontsWindow = toolbar.querySelector('#fonts_window');
@@ -5276,6 +5747,21 @@ function toggleGrid()
 	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("grids");
 	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleGrid", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.isEnabled() });
 }
+
+function toggleCssBox()
+{
+	if (_tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.cssBox.isEnabled()) _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].disable("cssBox");
+	else _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].enable("cssBox");
+	Object(_postMessage__WEBPACK_IMPORTED_MODULE_11__["default"])({ action: "hv.inspect.toggleCssBox", status: _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.guidelines.isEnabled() });
+}
+
+// function toggleRuler()
+// {
+// 	if (tools.primary.ruler.isEnabled()) tools.disable("ruler");
+// 	else tools.enable("ruler");
+
+// 	postMessage({ action: "hv.inspect.toggleRuler", status: tools.primary.ruler.isEnabled() });
+// }
 
 function toggleEdit()
 {
@@ -5496,6 +5982,8 @@ function onKeyDown(e)
 			if (e.key === "i" || e.key === "I") togglePlayback(e, null);
 			else if (e.key === "g" || e.key === "G") toggleGuidelines();
 			else if (e.key === "h" || e.key === "H") toggleGrid();
+			else if (e.key === "c" || e.key === "C") toggleCssBox();
+			// else if (e.key === "r" || e.key === "R") toggleRuler();
 			else if (e.key === "f" || e.key === "F") toggleFonts();
 			else if (e.key === "p" || e.key === "P") togglePalette();
 			else if (e.key === "e" || e.key === "E") toggleEdit();
@@ -5546,6 +6034,16 @@ function listenForMessage(event)
 		{
 			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.grids.isEnabled()) toggleGrid();
 		} break;
+
+		case "hv.inspect.toggleCssBox":
+		{
+			if (event.data.status !== _tools_tools__WEBPACK_IMPORTED_MODULE_9__["default"].secondary.cssBox.isEnabled()) toggleCssBox();
+		} break;
+
+		// case "hv.inspect.toggleRuler":
+		// {
+		// 	if (event.data.status !== tools.primary.ruler.isEnabled()) toggleRuler();
+		// } break;
 
 		case "hv.inspect.toggleEdit":
 		{
@@ -6675,6 +7173,239 @@ function Target()
 
 /***/ }),
 
+/***/ "./src/content_scripts/inspect/tools/cssBox.js":
+/*!*****************************************************!*\
+  !*** ./src/content_scripts/inspect/tools/cssBox.js ***!
+  \*****************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
+
+
+
+const state = {
+	enabled: false,
+	toolbarBtn: null,
+	hvCssBox: null,
+	shadow: null,
+    padding: {},
+    margin: {}
+}; 
+
+const fillSvg = `
+	<svg style="position: fixed; z-index: 50000000;">
+		<defs>
+			<pattern width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+				<rect width="2" height="4" transform="translate(0,0)" fill="white"></rect>
+			</pattern>
+			<mask>
+				<rect x="0" y="0" width="100%" height="100%" />
+			</mask>      
+		</defs>
+
+		<rect id="fill_section" class="hbar" x="0" y="0" width="100%" height="100%"></rect>
+	</svg>
+`
+
+function initialize(btn)
+{
+	state.toolbarBtn = btn;
+}
+
+function removeHighlights()
+{
+	const marginKeys = Object.keys(state.margin);
+	for (const key of marginKeys) state.margin[key].remove();
+
+	const paddingKeys = Object.keys(state.padding);
+	for (const key of paddingKeys) state.padding[key].remove();
+
+	state.padding = {};
+	state.margin = {};
+}
+
+function createFillSvg(id, cls, top, left, width, height)
+{
+	const area = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(fillSvg);
+	area.querySelector("pattern").id = `pattern-stripe-${id}`;
+	area.querySelector("mask").id = `mask-stripe-${id}`;
+	area.querySelector("mask").querySelector("rect").setAttribute("fill", `url(#pattern-stripe-${id})`);
+	area.querySelector("rect.hbar").id = `fill_section_${id}`;
+	area.querySelector(`#fill_section_${id}`).classList.add(cls);
+	area.style.top = `${top}px`;
+	area.style.left = `${left}px`;
+	area.style.width = `${width}px`;
+	area.style.height = `${height}px`;
+
+	return area;
+}
+
+function setTarget(target)
+{
+	if (!state.enabled) return;
+
+	removeHighlights();
+	const box = target.element.getBoundingClientRect();
+	const styles = window.getComputedStyle(target.element);
+
+	// Margin
+	const marginRight = parseInt(styles.getPropertyValue("margin-right").replace("px", ""));
+	if (marginRight)
+	{
+		state.margin.right = createFillSvg("margin_right", "margin", box.top, box.left + box.width, marginRight, box.height);
+		state.shadow.appendChild(state.margin.right);
+	}
+
+	const marginTop = parseInt(styles.getPropertyValue("margin-top").replace("px", ""));
+	if (marginTop)
+	{
+		state.margin.top = createFillSvg("margin_top", "margin", box.top - marginTop, box.left, box.width, marginTop);
+		state.shadow.appendChild(state.margin.top);
+	}
+
+	const marginLeft = parseInt(styles.getPropertyValue("margin-left").replace("px", ""));
+	if (marginLeft)
+	{
+		state.margin.left = createFillSvg("margin_left", "margin", box.top, box.left - marginLeft, marginLeft, box.height);
+		state.shadow.appendChild(state.margin.left);
+	}
+
+	const marginBottom = parseInt(styles.getPropertyValue("margin-bottom").replace("px", ""));
+	if (marginBottom)
+	{
+		state.margin.bottom = createFillSvg("margin_bottom", "margin", box.top + box.height, box.left, box.width, marginBottom);
+		state.shadow.appendChild(state.margin.bottom);
+	}
+
+	// Padding
+	const paddingTop = parseInt(styles.getPropertyValue("padding-top").replace("px", ""));
+	if (paddingTop)
+	{
+		state.padding.top = createFillSvg("padding_top", "padding", box.top, box.left, box.width, paddingTop);
+		state.shadow.appendChild(state.padding.top);
+	}
+
+	const paddingBottom = parseInt(styles.getPropertyValue("padding-bottom").replace("px", ""));
+	if (paddingBottom)
+	{
+		state.padding.bottom = createFillSvg("padding_bottom", "padding", box.top + box.height - paddingBottom, box.left, box.width, paddingBottom);
+		state.shadow.appendChild(state.padding.bottom);
+	}
+
+	let paddingDx = box.top;
+	let paddingHeight = box.height;
+	if (paddingTop)
+	{
+		paddingDx += paddingTop;
+		paddingHeight -= paddingTop;
+	}
+
+	if (paddingBottom) paddingHeight -= paddingBottom;
+
+	const paddingLeft = parseInt(styles.getPropertyValue("padding-left").replace("px", ""));
+	if (paddingLeft)
+	{
+		state.padding.left = createFillSvg("padding_left", "padding", paddingDx, box.left, paddingLeft, paddingHeight);
+		state.shadow.appendChild(state.padding.left);
+	}
+
+	const paddingRight = parseInt(styles.getPropertyValue("padding-right").replace("px", ""));
+	if (paddingRight)
+	{
+		state.padding.right = createFillSvg("padding_right", "padding", paddingDx, box.left + box.width - paddingRight, paddingRight, paddingHeight);
+		state.shadow.appendChild(state.padding.right);
+	}
+}
+
+function enable()
+{
+	state.enabled = true;
+	state.toolbarBtn.classList.add('active');
+
+	state.hvCssBox = document.createElement('hv-css-box');
+	state.hvCssBox.style.pointerEvents = 'none';
+	state.hvCssBox.style.position = 'fixed';
+	state.hvCssBox.style.zIndex = `50000000`;
+
+	state.shadow = state.hvCssBox.attachShadow({ mode: 'closed' });
+	const css = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+		<style>
+			rect#fill_section_margin_top {
+				mask: url(#mask-stripe-margin_top);
+			}
+
+			rect#fill_section_margin_bottom {
+				mask: url(#mask-stripe-margin_bottom);
+			}
+
+			rect#fill_section_margin_left {
+				mask: url(#mask-stripe-margin_left);
+			}
+
+			rect#fill_section_margin_right {
+				mask: url(#mask-stripe-margin_right);
+			}
+
+			rect#fill_section_padding_top {
+				mask: url(#mask-stripe-padding_top);
+			}
+
+			rect#fill_section_padding_bottom {
+				mask: url(#mask-stripe-padding_bottom);
+			}
+
+			rect#fill_section_padding_left {
+				mask: url(#mask-stripe-padding_left);
+			}
+
+			rect#fill_section_padding_right {
+				mask: url(#mask-stripe-padding_right);
+			}
+
+			.margin {
+				fill: blue;
+			}
+			
+			.padding {
+				fill: green;
+			}
+		</style>
+	`);
+	state.shadow.appendChild(css);
+
+	document.body.appendChild(state.hvCssBox);
+}
+
+function disable()
+{
+	state.enabled = false;
+	state.toolbarBtn.classList.remove('active');
+
+	state.hvCssBox.remove();
+	state.hvCssBox = null;
+	state.shadow = null;
+	state.padding = {};
+	state.margin = {};
+}
+
+function isEnabled()
+{
+	return state.enabled;
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+	initialize,
+	enable,
+	isEnabled,
+	disable,
+	setTarget
+});
+
+/***/ }),
+
 /***/ "./src/content_scripts/inspect/tools/customCSS.js":
 /*!********************************************************!*\
   !*** ./src/content_scripts/inspect/tools/customCSS.js ***!
@@ -7606,6 +8337,99 @@ function render()
 	disable,
 	isEnabled,
 	destroy
+});
+
+/***/ }),
+
+/***/ "./src/content_scripts/inspect/tools/ruler.js":
+/*!****************************************************!*\
+  !*** ./src/content_scripts/inspect/tools/ruler.js ***!
+  \****************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _target__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../target */ "./src/content_scripts/inspect/target.js");
+/* harmony import */ var _mark__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../mark */ "./src/content_scripts/inspect/mark.js");
+
+
+
+
+const state = {
+	enabled: false,
+	toolbarBtn: null,
+	outline: null,
+	current_target: null,
+    main_target: null
+};
+
+function initialize(btn)
+{
+	state.toolbarBtn = btn;
+}
+
+function enable()
+{
+	state.enabled = true;
+	state.toolbarBtn.classList.add('active');
+}
+
+function disable()
+{
+	state.enabled = false;
+	state.toolbarBtn.classList.remove('active');
+
+    // for (const target of state.targets) target.mark.remove();
+    // state.targets = [];
+}
+
+function destroy()
+{
+	disable();
+}
+
+function isEnabled()
+{
+	return state.enabled;
+}
+
+function setTarget(target)
+{
+	state.current_target = target;
+	if (state.current_target.element === state.element) state.current_target.mark.remove();
+
+	if (state.main_target) 
+	{
+
+	}
+}
+
+function loop()
+{
+
+}
+
+function onClick()
+{
+	if (state.main_target) state.main_target.mark.remove();
+
+	state.main_target = new _target__WEBPACK_IMPORTED_MODULE_0__["default"]();
+	state.main_target.element = state.current_target.element;
+	state.current_target.mark.remove();
+	state.main_target.mark = Object(_mark__WEBPACK_IMPORTED_MODULE_1__["default"])(state.main_target.element, true, "#e91e63");
+}	
+
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+	initialize,
+	enable,
+	disable,
+	isEnabled,
+	destroy,
+	setTarget,
+	onClick,
+	loop
 });
 
 /***/ }),
@@ -8794,8 +9618,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _search__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./search */ "./src/content_scripts/inspect/tools/search.js");
 /* harmony import */ var _guidelines__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./guidelines */ "./src/content_scripts/inspect/tools/guidelines.js");
 /* harmony import */ var _grids__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./grids */ "./src/content_scripts/inspect/tools/grids.js");
-/* harmony import */ var _customCSS__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./customCSS */ "./src/content_scripts/inspect/tools/customCSS.js");
-/* harmony import */ var _customJS__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./customJS */ "./src/content_scripts/inspect/tools/customJS.js");
+/* harmony import */ var _ruler__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./ruler */ "./src/content_scripts/inspect/tools/ruler.js");
+/* harmony import */ var _customCSS__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./customCSS */ "./src/content_scripts/inspect/tools/customCSS.js");
+/* harmony import */ var _customJS__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./customJS */ "./src/content_scripts/inspect/tools/customJS.js");
+/* harmony import */ var _cssBox_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./cssBox.js */ "./src/content_scripts/inspect/tools/cssBox.js");
+
+
 
 
 
@@ -8809,19 +9637,21 @@ __webpack_require__.r(__webpack_exports__);
 
 
 const primary = {
-	style: _style__WEBPACK_IMPORTED_MODULE_0__["default"], 
+	style: _style__WEBPACK_IMPORTED_MODULE_0__["default"],
+	// ruler: Ruler, 
 	edit: _edit__WEBPACK_IMPORTED_MODULE_2__["default"],
 	trash: _trash__WEBPACK_IMPORTED_MODULE_4__["default"],
 	search: _search__WEBPACK_IMPORTED_MODULE_5__["default"],
 	fonts: _fonts__WEBPACK_IMPORTED_MODULE_1__["default"],
 	palette: _palette__WEBPACK_IMPORTED_MODULE_3__["default"],
-	customCSS: _customCSS__WEBPACK_IMPORTED_MODULE_8__["default"],
-	customJS: _customJS__WEBPACK_IMPORTED_MODULE_9__["default"]
+	customCSS: _customCSS__WEBPACK_IMPORTED_MODULE_9__["default"],
+	customJS: _customJS__WEBPACK_IMPORTED_MODULE_10__["default"]
 };
 
 const secondary = {
 	guidelines: _guidelines__WEBPACK_IMPORTED_MODULE_6__["default"],
-	grids: _grids__WEBPACK_IMPORTED_MODULE_7__["default"]
+	grids: _grids__WEBPACK_IMPORTED_MODULE_7__["default"],
+	cssBox: _cssBox_js__WEBPACK_IMPORTED_MODULE_11__["default"]
 }
 
 function initialize()
@@ -8838,14 +9668,8 @@ function enable(toolName)
 		for (const key of keys)
 		{
 			const tool = primary[key];
-			if (key === toolName)
-			{
-				if (!tool.isEnabled()) tool.enable();
-			}
-			else
-			{
-				tool.disable();
-			}
+			if (key === toolName) if (!tool.isEnabled()) tool.enable();
+			else tool.disable();
 		}
 	}
 	else
@@ -8872,10 +9696,7 @@ function disable(toolName)
 
 function destroy()
 {
-	for (const key in primary)
-	{
-		primary[key].destroy();
-	}
+	for (const key in primary) primary[key].destroy();
 
 	for (const key in secondary)
 	{
@@ -8889,19 +9710,13 @@ function setTarget(target)
 	for (const key in primary)
 	{
 		const tool = primary[key];
-		if (tool.isEnabled() && tool.setTarget)
-		{
-			tool.setTarget(target);
-		}
+		if (tool.isEnabled() && tool.setTarget) tool.setTarget(target);
 	}
 
 	for (const key in secondary)
 	{
 		const tool = secondary[key];
-		if (tool.isEnabled() && tool.setTarget)
-		{
-			tool.setTarget(target);
-		}
+		if (tool.isEnabled() && tool.setTarget) tool.setTarget(target);
 	}
 }
 
@@ -8910,10 +9725,7 @@ function onClick()
 	for (const key in primary)
 	{
 		const tool = primary[key];
-		if (tool.isEnabled() && tool.onClick)
-		{
-			tool.onClick();
-		}
+		if (tool.isEnabled() && tool.onClick) tool.onClick();
 	}
 }
 
@@ -9556,6 +10368,9 @@ function createToolbar()
             <li id='grids' class="tool">     
                 ${_utils_svg__WEBPACK_IMPORTED_MODULE_0__["default"].grid}
             </li>
+            <li id='css_box' class="tool">     
+                ${_utils_svg__WEBPACK_IMPORTED_MODULE_0__["default"].box}
+            </li>
             <li id='fonts' class="tool">
                 ${_utils_svg__WEBPACK_IMPORTED_MODULE_0__["default"].bold}
             </li>
@@ -9680,210 +10495,9 @@ function createToolbar()
 
 
 
-/***/ }),
-
-/***/ "./src/content_scripts/screenshot/screenshot.js":
-/*!******************************************************!*\
-  !*** ./src/content_scripts/screenshot/screenshot.js ***!
-  \******************************************************/
-/*! exports provided: default */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _utils_msg__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../utils/msg */ "./src/utils/msg.js");
-/* harmony import */ var _utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../utils/globalStyles */ "./src/utils/globalStyles.js");
-
-
-
-
-const CAPTURE_DELAY = 300;
-const CLEAN_UP_DELAY = 2000;
-const SCROLL_PAD = 200;
-const state = {
-	original_x: 0,
-	original_y: 0,
-	arrangements: [],
-	num_arrangements: 0,
-	clean_up_timeout: null,
-	stickies: [],
-	fixed: [],
-    style: null
-};
-
-function prepare()
-{
-	document.querySelector("head").appendChild(_utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__["hideScrollbarLink"]);
-    state.style = document.createElement('style');
-    state.style.innerHTML = `
-        html { 
-            scroll-behavior: auto !important; 
-        } 
-        * { 
-            -webkit-transition: none !important;
-            -moz-transition: none !important;
-            -o-transition: none !important;
-            transition: none !important;
-            animation-duration: 0s !important;
-        }
-    `;
-    document.body.appendChild(state.style);
-}
-
-function reset()
-{
-	_utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__["hideScrollbarLink"].remove();
-    state.style.remove();
-    state.style = null;
-}
-
-function prepareFullPage()
-{
-	prepare();
-
-	for (const element of document.querySelectorAll("body *"))
-	{
-		const position = window.getComputedStyle(element).getPropertyValue("position");
-		if (position.includes("sticky"))
-		{
-			let style = element.getAttribute("style");
-			if (!style) style = "";
-			state.stickies.push({ element, style });
-			element.setAttribute("style", `position: relative !important; inset: auto !important; top: 0px; ${style}`);
-		}
-
-        element.scrollTop = 0;
-	}
-
-	state.original_x = window.scrollX;
-	state.original_y = window.scrollY;
-    state.arrangements = [];
-    state.num_arrangements = 0;
-	state.page_height = Math.max(
-        document.body.scrollHeight || 0, 
-        document.documentElement.scrollHeight || 0,
-        document.body.offsetHeight || 0, 
-        document.documentElement.offsetHeight || 0,
-        document.body.clientHeight || 0, 
-        document.documentElement.clientHeight || 0
-    );
-    state.page_width = Math.max(
-        document.body.scrollWidth || 0, 
-        document.documentElement.scrollWidth || 0,
-        document.body.offsetWidth || 0, 
-        document.documentElement.offsetWidth || 0,
-        document.body.clientWidth || 0, 
-        document.documentElement.clientWidth || 0
-    );
-
-    const windowHeight = window.innerHeight;
-    const windowWidth = window.innerWidth;
-    
-    const yDelta = windowHeight - (windowHeight > SCROLL_PAD ? SCROLL_PAD : 0);
-    let yPos = 0;
-    while (yPos < state.page_height) 
-    {
-    	if (state.page_height - yPos < windowHeight)
-		{
-			state.arrangements.push([0, state.page_height - windowHeight]);
-			break;
-		}
-
-		state.arrangements.push([0, yPos]);
-        yPos += yDelta;
-    }
-
-    state.num_arrangements = state.arrangements.length;
-
-    processArrangements();
-}
-
-function cleanUp() 
-{
-    reset();
-    window.scrollTo(state.original_x, state.original_y);
-
-    for (const sticky of state.stickies) { sticky.element.setAttribute("style", sticky.style); }
-	state.stickies = [];
-
-	for (const fix of state.fixed) { fix.element.setAttribute("style", fix.style); }
-	state.fixed = [];
-} 
-
-function processArrangements()
-{
-	if (!state.arrangements.length) 
-	{
-        cleanUp();
-        return;
-    }
-
-    const next = state.arrangements.shift();
-	const x = next[0], y = next[1];
-    window.scrollTo(x, y);
-
-    var data = {
-        x: window.scrollX,
-        y: window.scrollY,
-        complete: (state.num_arrangements - state.arrangements.length) / state.num_arrangements,
-        window_width: window.innerWidth,
-        total_width: state.page_width,
-        total_height: state.page_height,
-        pixel_ratio: window.devicePixelRatio
-    };
-
-    window.setTimeout(() => 
-    {
-        // Hide elements with position fixed;
-        if (state.arrangements.length !== state.num_arrangements - 1)
-        {
-            for (const element of document.querySelectorAll("body *"))
-            {
-                const styles = window.getComputedStyle(element);
-                if (styles.getPropertyValue("position").includes("fixed"))
-                {
-                    const boundingBox = element.getBoundingClientRect();
-                    if (window.innerHeight - boundingBox.top > SCROLL_PAD)
-                    {
-                        let style = element.getAttribute("style");
-                        if (style) style = style.trim();
-                        if (style)
-                        {
-                            if (!style.endsWith(";")) style = style+";" 
-                        }
-                        else style = style = "";
-                        state.fixed.push({ element, style });
-                        element.setAttribute("style", `${style} position: absolute !important;`);
-                    }
-                }
-            }
-        }
-
-        capture(data);
-    }, CAPTURE_DELAY / 2);
-}
-
-function capture(data)
-{
-    window.setTimeout(() => 
-    {
-        state.clean_up_timeout = window.setTimeout(cleanUp, CLEAN_UP_DELAY);
-        _utils_msg__WEBPACK_IMPORTED_MODULE_0__["default"].sendMessage('screenshot.captureFragment', { data });
-    }, CAPTURE_DELAY);
-}
-
-function proceedCapture()
-{
-	window.clearTimeout(state.clean_up_timeout);
-    processArrangements();
-}
-
-/* harmony default export */ __webpack_exports__["default"] = ({
-	prepare,
-	reset,
-	prepareFullPage,
-	proceedCapture
-});
+{/* <li id='ruler' class="tool">     
+                ${svg.maximize_2}
+            </li> */}
 
 /***/ }),
 
@@ -12365,6 +12979,31 @@ const file = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentCol
 
 const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>';
 
+const maximize_2 = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+
+const box = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>';
+
+const browser = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><g><path d="M58,3.2H6C3.4,3.2,1.3,5.4,1.3,8v48c0,2.6,2.1,4.8,4.8,4.8h52c2.6,0,4.8-2.1,4.8-4.8V8C62.8,5.4,60.6,3.2,58,3.2z M6,6.7
+   h52c0.7,0,1.3,0.6,1.3,1.3v8.2H4.8V8C4.8,7.3,5.3,6.7,6,6.7z M58,57.3H6c-0.7,0-1.3-0.6-1.3-1.3V19.7h54.5V56
+   C59.3,56.7,58.7,57.3,58,57.3z"/><path d="M40.4,25.5H23.6c-2.6,0-4.8,2.1-4.8,4.8v7.9c0,2.6,2.1,4.8,4.8,4.8h16.7c2.6,0,4.8-2.1,4.8-4.8v-7.9
+   C45.1,27.6,43,25.5,40.4,25.5z M41.6,38.2c0,0.7-0.6,1.3-1.3,1.3H23.6c-0.7,0-1.3-0.6-1.3-1.3v-7.9c0-0.7,0.6-1.3,1.3-1.3h16.7
+   c0.7,0,1.3,0.6,1.3,1.3V38.2z"/><path d="M39.9,48.4H24.1c-1,0-1.8,0.8-1.8,1.8s0.8,1.8,1.8,1.8h15.9c1,0,1.8-0.8,1.8-1.8S40.9,48.4,39.9,48.4z"/></g></svg>`;
+
+const select = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64">
+<g><path d="M53.2,52.4C53.2,52.4,53.1,52.4,53.2,52.4l7.2-4.3l-19.6-7.4c-0.4-0.2-0.8,0.2-0.6,0.6L47.5,61l4.2-7.2c0,0,0,0,0,0.1
+   l4.1,4.1c0.2,0.2,0.5,0.3,0.7,0.3s0.5-0.1,0.7-0.3c0.4-0.4,0.4-1,0-1.4L53.2,52.4z"/><rect x="35.5" y="46.2" width="4" height="2"/><rect x="20.6" y="46.2" width="7.5" height="2"/><rect x="9.2" y="46.2" width="4" height="2"/><path d="M4.6,44.4h-2v2.8c0,0.6,0.4,1,1,1h2.8v-2H4.6V44.4z"/><rect x="2.6" y="34.9" width="2" height="4"/><rect x="2.6" y="20" width="2" height="7.5"/><rect x="2.6" y="8.5" width="2" height="4"/><path d="M2.6,3v2.8h2V4h1.8V2H3.6C3.1,2,2.6,2.4,2.6,3z"/><rect x="11.9" y="2" width="4" height="2"/><rect x="23.4" y="2" width="7.5" height="2"/><rect x="38.3" y="2" width="4" height="2"/><path d="M46.8,5.8h2V3c0-0.6-0.4-1-1-1H45v2h1.8V5.8z"/><rect x="46.8" y="11.3" width="2" height="4"/><rect x="46.8" y="22.7" width="2" height="7.5"/><rect x="46.8" y="37.6" width="2" height="4"/></g></svg>`;
+
+const page = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><g><path d="M51.6,2H12.4c-2.8,0-5,2.2-5,5v50c0,2.8,2.2,5,5,5h39.2c2.8,0,5-2.2,5-5V7C56.6,4.2,54.3,2,51.6,2z M54.6,57
+   c0,1.7-1.3,3-3,3H12.4c-1.7,0-3-1.3-3-3V7c0-1.7,1.3-3,3-3h39.2c1.7,0,3,1.3,3,3V57z"/><path d="M46,9.8H34.6c-1.1,0-2,0.9-2,2v13.8c0,1.1,0.9,2,2,2H46c1.1,0,2-0.9,2-2V11.8C48,10.7,47.1,9.8,46,9.8z M34.6,25.6V11.8H46
+   l0,13.8H34.6z"/><path d="M17.2,13.6h7.6c0.6,0,1-0.4,1-1s-0.4-1-1-1h-7.6c-0.6,0-1,0.4-1,1S16.6,13.6,17.2,13.6z"/><path d="M17.2,26.7h7.6c0.6,0,1-0.4,1-1s-0.4-1-1-1h-7.6c-0.6,0-1,0.4-1,1S16.6,26.7,17.2,26.7z"/><path d="M47,37.9H17.2c-0.6,0-1,0.4-1,1s0.4,1,1,1H47c0.6,0,1-0.4,1-1S47.5,37.9,47,37.9z"/><path d="M47,51.1H17.2c-0.6,0-1,0.4-1,1s0.4,1,1,1H47c0.6,0,1-0.4,1-1S47.5,51.1,47,51.1z"/></g></svg>`;
+
+const layout2 = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><path d="M56.8,1.4H7.1C4,1.4,1.4,3.9,1.4,7.1v49.6c0,3.2,2.6,5.8,5.8,5.8h49.6c3.2,0,5.8-2.6,5.8-5.8V7.1C62.5,3.9,60,1.4,56.8,1.4z
+M7.1,4.9h49.6c1.2,0,2.3,1,2.3,2.3V17H4.9V7.1C4.9,5.9,5.9,4.9,7.1,4.9z M20.6,20.5H59v17.6H20.6V20.5z M4.9,56.7V20.5h12.2V59H7.1
+C5.9,59,4.9,58,4.9,56.7z M56.8,59H20.6V41.6H59v15.2C59,58,58,59,56.8,59z"/>
+</svg>`;
+
+const camera = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
+
 /* harmony default export */ __webpack_exports__["default"] = ({ 
 	play,
 	pause,
@@ -12389,6 +13028,7 @@ const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentC
 	minus,
 	minusSquare,
 	maximize,
+	maximize_2,
 	search,
 	save,
 	check,
@@ -12409,7 +13049,13 @@ const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentC
 	drop,
 	bookmark,
 	file,
-	layout
+	layout,
+	box,
+	browser, 
+	select,
+	page,
+	layout2,
+	camera
 });
 
 

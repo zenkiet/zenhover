@@ -3017,7 +3017,7 @@ function getFileName(src, defaultExt, extSet)
 		name.file_ext = defaultExt;
 	}
 
-	if (name.file_name.length > 8) name.sliced_name = name.file_name.substring(0, 12) + "...";
+	if (name.file_name.length > 8) name.sliced_name = name.file_name.substring(0, 8) + "...";
 	else name.sliced_name = name.file_name; 
 	name.full = `${name.file_name}.${name.file_ext}`;
 
@@ -3075,6 +3075,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../helpers */ "./src/popup/assets/helpers.js");
 /* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../utils/svg */ "./src/utils/svg.js");
 /* harmony import */ var _components_loader__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../components/loader */ "./src/components/loader.js");
+/* harmony import */ var _utils_modal__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../../utils/modal */ "./src/utils/modal.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../../utils/utility */ "./src/utils/utility.js");
+
+
 
 
 
@@ -3094,6 +3098,7 @@ function ImagesTab(tabs)
     tabs.roots["images"].initialize = (tabBody) => 
     {
         loader = new _components_loader__WEBPACK_IMPORTED_MODULE_3__["default"]();
+        _utils_modal__WEBPACK_IMPORTED_MODULE_4__["default"].createToast();
 
         menu = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class='tab-menu' style="display: none;"></div>`);
         sortSelect = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
@@ -3159,11 +3164,19 @@ function ImagesTab(tabs)
                     </div>
                 `);
 
+                const copy = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].copy);
+                copy.addEventListener('click', () => 
+                {
+                    Object(_utils_utility__WEBPACK_IMPORTED_MODULE_5__["copyText"])(image.full);
+                    _utils_modal__WEBPACK_IMPORTED_MODULE_4__["default"].show("Filename copied!", _utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].clipboard, "#43a047");
+                });
+
                 image.onSizeChange = function()
                 {
                     footer.querySelector(".info span").innerHTML = `${ext} | ${image.sizeString}`;
                 }
 
+                footer.appendChild(copy);
                 li.appendChild(img);
                 li.appendChild(footer);
                 ul.appendChild(li);
@@ -3185,7 +3198,7 @@ function ImagesTab(tabs)
                 {
                     this.images.push({
                         src,
-                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "jpg", [".jpg", ".png", ".webp", ".gif", ".svg"]),
+                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "jpg", ["jpg", "png", "webp", "gif", "svg"]),
                         sizeNumber: 0,
                         sizeString: "0kb",
                         onSizeChange: null,
@@ -3328,6 +3341,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
 /* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../helpers */ "./src/popup/assets/helpers.js");
 /* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../utils/svg */ "./src/utils/svg.js");
+/* harmony import */ var _utils_modal__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../utils/modal */ "./src/utils/modal.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../../utils/utility */ "./src/utils/utility.js");
+
+
 
 
 
@@ -3344,6 +3361,8 @@ function VideosTab(tabs)
 
     tabs.roots["videos"].initialize = (tabBody) => 
     {
+        _utils_modal__WEBPACK_IMPORTED_MODULE_3__["default"].createToast();
+
         menu = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class='tab-menu'></div>`);
         sortSelect = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
             <select style="width: 120px;">
@@ -3406,11 +3425,19 @@ function VideosTab(tabs)
                     </div>
                 `);
 
+                const copy = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].copy);
+                copy.addEventListener('click', () => 
+                {
+                    Object(_utils_utility__WEBPACK_IMPORTED_MODULE_4__["copyText"])(vid.full);
+                    _utils_modal__WEBPACK_IMPORTED_MODULE_3__["default"].show("Filename copied!", _utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].clipboard, "#43a047");
+                });
+
                 vid.onSizeChange = function()
                 {
                     footer.querySelector(".info span").innerHTML = `${ext} | ${vid.sizeString}`;
                 }
 
+                footer.appendChild(copy);
                 li.appendChild(footer);
                 ul.appendChild(li);
             }
@@ -3431,7 +3458,7 @@ function VideosTab(tabs)
                 {
                     this.videos.push({
                         src,
-                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "mp4", [".mp4", ".webm", ".ogg"]),
+                        ...Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getFileName"])(src, "mp4", ["mp4", "webm", "ogg"]),
                         sizeNumber: 0,
                         sizeString: "0kb",
                         onSizeChange: null,
@@ -3952,6 +3979,31 @@ const file = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentCol
 
 const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>';
 
+const maximize_2 = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+
+const box = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>';
+
+const browser = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><g><path d="M58,3.2H6C3.4,3.2,1.3,5.4,1.3,8v48c0,2.6,2.1,4.8,4.8,4.8h52c2.6,0,4.8-2.1,4.8-4.8V8C62.8,5.4,60.6,3.2,58,3.2z M6,6.7
+   h52c0.7,0,1.3,0.6,1.3,1.3v8.2H4.8V8C4.8,7.3,5.3,6.7,6,6.7z M58,57.3H6c-0.7,0-1.3-0.6-1.3-1.3V19.7h54.5V56
+   C59.3,56.7,58.7,57.3,58,57.3z"/><path d="M40.4,25.5H23.6c-2.6,0-4.8,2.1-4.8,4.8v7.9c0,2.6,2.1,4.8,4.8,4.8h16.7c2.6,0,4.8-2.1,4.8-4.8v-7.9
+   C45.1,27.6,43,25.5,40.4,25.5z M41.6,38.2c0,0.7-0.6,1.3-1.3,1.3H23.6c-0.7,0-1.3-0.6-1.3-1.3v-7.9c0-0.7,0.6-1.3,1.3-1.3h16.7
+   c0.7,0,1.3,0.6,1.3,1.3V38.2z"/><path d="M39.9,48.4H24.1c-1,0-1.8,0.8-1.8,1.8s0.8,1.8,1.8,1.8h15.9c1,0,1.8-0.8,1.8-1.8S40.9,48.4,39.9,48.4z"/></g></svg>`;
+
+const select = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64">
+<g><path d="M53.2,52.4C53.2,52.4,53.1,52.4,53.2,52.4l7.2-4.3l-19.6-7.4c-0.4-0.2-0.8,0.2-0.6,0.6L47.5,61l4.2-7.2c0,0,0,0,0,0.1
+   l4.1,4.1c0.2,0.2,0.5,0.3,0.7,0.3s0.5-0.1,0.7-0.3c0.4-0.4,0.4-1,0-1.4L53.2,52.4z"/><rect x="35.5" y="46.2" width="4" height="2"/><rect x="20.6" y="46.2" width="7.5" height="2"/><rect x="9.2" y="46.2" width="4" height="2"/><path d="M4.6,44.4h-2v2.8c0,0.6,0.4,1,1,1h2.8v-2H4.6V44.4z"/><rect x="2.6" y="34.9" width="2" height="4"/><rect x="2.6" y="20" width="2" height="7.5"/><rect x="2.6" y="8.5" width="2" height="4"/><path d="M2.6,3v2.8h2V4h1.8V2H3.6C3.1,2,2.6,2.4,2.6,3z"/><rect x="11.9" y="2" width="4" height="2"/><rect x="23.4" y="2" width="7.5" height="2"/><rect x="38.3" y="2" width="4" height="2"/><path d="M46.8,5.8h2V3c0-0.6-0.4-1-1-1H45v2h1.8V5.8z"/><rect x="46.8" y="11.3" width="2" height="4"/><rect x="46.8" y="22.7" width="2" height="7.5"/><rect x="46.8" y="37.6" width="2" height="4"/></g></svg>`;
+
+const page = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><g><path d="M51.6,2H12.4c-2.8,0-5,2.2-5,5v50c0,2.8,2.2,5,5,5h39.2c2.8,0,5-2.2,5-5V7C56.6,4.2,54.3,2,51.6,2z M54.6,57
+   c0,1.7-1.3,3-3,3H12.4c-1.7,0-3-1.3-3-3V7c0-1.7,1.3-3,3-3h39.2c1.7,0,3,1.3,3,3V57z"/><path d="M46,9.8H34.6c-1.1,0-2,0.9-2,2v13.8c0,1.1,0.9,2,2,2H46c1.1,0,2-0.9,2-2V11.8C48,10.7,47.1,9.8,46,9.8z M34.6,25.6V11.8H46
+   l0,13.8H34.6z"/><path d="M17.2,13.6h7.6c0.6,0,1-0.4,1-1s-0.4-1-1-1h-7.6c-0.6,0-1,0.4-1,1S16.6,13.6,17.2,13.6z"/><path d="M17.2,26.7h7.6c0.6,0,1-0.4,1-1s-0.4-1-1-1h-7.6c-0.6,0-1,0.4-1,1S16.6,26.7,17.2,26.7z"/><path d="M47,37.9H17.2c-0.6,0-1,0.4-1,1s0.4,1,1,1H47c0.6,0,1-0.4,1-1S47.5,37.9,47,37.9z"/><path d="M47,51.1H17.2c-0.6,0-1,0.4-1,1s0.4,1,1,1H47c0.6,0,1-0.4,1-1S47.5,51.1,47,51.1z"/></g></svg>`;
+
+const layout2 = `<svg fill="currentColor" width="24" height="24" viewBox="0 0 64 64"><path d="M56.8,1.4H7.1C4,1.4,1.4,3.9,1.4,7.1v49.6c0,3.2,2.6,5.8,5.8,5.8h49.6c3.2,0,5.8-2.6,5.8-5.8V7.1C62.5,3.9,60,1.4,56.8,1.4z
+M7.1,4.9h49.6c1.2,0,2.3,1,2.3,2.3V17H4.9V7.1C4.9,5.9,5.9,4.9,7.1,4.9z M20.6,20.5H59v17.6H20.6V20.5z M4.9,56.7V20.5h12.2V59H7.1
+C5.9,59,4.9,58,4.9,56.7z M56.8,59H20.6V41.6H59v15.2C59,58,58,59,56.8,59z"/>
+</svg>`;
+
+const camera = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
+
 /* harmony default export */ __webpack_exports__["default"] = ({ 
 	play,
 	pause,
@@ -3976,6 +4028,7 @@ const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentC
 	minus,
 	minusSquare,
 	maximize,
+	maximize_2,
 	search,
 	save,
 	check,
@@ -3996,7 +4049,13 @@ const layout = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentC
 	drop,
 	bookmark,
 	file,
-	layout
+	layout,
+	box,
+	browser, 
+	select,
+	page,
+	layout2,
+	camera
 });
 
 

@@ -43,7 +43,7 @@
 /******/
 /******/ 	// script path function
 /******/ 	function jsonpScriptSrc(chunkId) {
-/******/ 		return __webpack_require__.p + "" + chunkId + "." + "7fa0c2c1900cf0e90d7c" + ".js"
+/******/ 		return __webpack_require__.p + "" + chunkId + "." + "6d84fc51cacf3664a892" + ".js"
 /******/ 	}
 /******/
 /******/ 	// The require function
@@ -5196,6 +5196,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../utils/store */ "./src/utils/store.js");
 /* harmony import */ var _utils_fs__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../utils/fs */ "./src/utils/fs.js");
 /* harmony import */ var _utils_platform__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../utils/platform */ "./src/utils/platform.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../utils/utility */ "./src/utils/utility.js");
+
 
 
 
@@ -5214,7 +5216,6 @@ const state = {
 	uris: []
 };
 
-
 (async () => 
 {
 	try
@@ -5222,6 +5223,7 @@ const state = {
 		const screenshots = await _utils_store__WEBPACK_IMPORTED_MODULE_4__["default"].get("screenshots");
 		if (_utils_platform__WEBPACK_IMPORTED_MODULE_6__["default"].browser.name === "Firefox")
 		{
+			const stripedScreenshots = [];
 			const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create("<canvas></canvas>");
 			const context = canvas.getContext("2d");
 
@@ -5234,9 +5236,9 @@ const state = {
 					canvas.height = image.height; 
 					context.drawImage(image, 0, 0);
 
-					state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = canvas.toDataURL("image/png");
+					stripedScreenshots.push(canvas.toDataURL("image/png"));
 
-					if (index === 0) createScreenshots();
+					if (index === 0) initialize(stripedScreenshots);
 					else stripScrollbar(index - 1);
 				}
 				image.src = screenshots[index];
@@ -5244,17 +5246,44 @@ const state = {
 
 			stripScrollbar(screenshots.length - 1);
 		}
-		else
-		{	
-			for (const screenshot of screenshots) state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = screenshot;
-			createScreenshots();
-		} 
+		else initialize(screenshots);
 	}
 	catch (err)
 	{
 		console.log(err);
 	}
 })();
+
+function initialize(screenshots)
+{
+	const params = Object(_utils_utility__WEBPACK_IMPORTED_MODULE_7__["qs"])(window.location.href);
+	
+	if (params && params.r)
+	{
+		const rect = JSON.parse(atob(atob(params.r)));
+		const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create("<canvas></canvas>");
+		const context = canvas.getContext("2d");
+
+		const image = new Image();
+		image.onload = () => 
+		{
+			canvas.width = rect.largeX - rect.smallX;
+			canvas.height = rect.largeY - rect.smallY; 
+			context.drawImage(image, -rect.smallX, -rect.smallY, rect.width, rect.height);
+
+			state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = canvas.toDataURL("image/png");
+			createScreenshots();
+		}
+
+		image.src = screenshots[0];
+	}
+	else
+	{
+		for (const screenshot of screenshots) state.uris[_utils_fs__WEBPACK_IMPORTED_MODULE_5__["default"].generateFileName()] = screenshot;
+		createScreenshots();
+	}
+	
+}
 
 function getJPEG(URI, callback) 
 {
@@ -5339,11 +5368,7 @@ function setupPDF()
 			const height = (image.height * width) / image.width;
 		   	const doc = new jspdf__WEBPACK_IMPORTED_MODULE_1__["jsPDF"]({format: [width, height]});  
 	
-			for (const [fileName, URI] of Object.entries(state.uris))
-			{
-				doc.addImage(URI, 'JPEG', 0, 0, width, height, fileName, 'FAST');	
-			}
-			
+			for (const [fileName, URI] of Object.entries(state.uris)) doc.addImage(URI, 'JPEG', 0, 0, width, height, fileName, 'FAST');	
 			doc.save("screenshots.pdf");
 		});
 	});
@@ -5800,6 +5825,158 @@ const get = async (key) =>
 }
 
 /* harmony default export */ __webpack_exports__["default"] = ({ set, get });
+
+/***/ }),
+
+/***/ "./src/utils/utility.js":
+/*!******************************!*\
+  !*** ./src/utils/utility.js ***!
+  \******************************/
+/*! exports provided: copyText, deepEqual, qs, randomString, getAssetUrl, endsWith, Watcher */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "copyText", function() { return copyText; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "deepEqual", function() { return deepEqual; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "qs", function() { return qs; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "randomString", function() { return randomString; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getAssetUrl", function() { return getAssetUrl; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "endsWith", function() { return endsWith; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Watcher", function() { return Watcher; });
+
+
+function copyText(text)
+{
+    if (navigator.clipboard)
+    {
+        (async () => 
+        {
+            try
+            {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+            catch (err)
+            {
+                throw err;
+            }
+        })();
+    }
+    else
+    {
+        const textarea = document.createElement('textarea');
+        document.body.appendChild(textarea);
+        textarea.innerHTML = text;
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        return true;
+    }
+}
+
+function deepEqual(x, y)
+{
+    const ok = Object.keys, tx = typeof x, ty = typeof y;
+    return x && y && tx === 'object' && tx === ty ? (
+        ok(x).length === ok(y).length &&
+        ok(x).every(key => deepEqual(x[key], y[key]))
+    ) : (x === y);
+}
+
+function qs(str)
+{
+    let a = str.split("?")[1];
+    if (a)
+    {
+        a = a.split("&");
+        if (a == "") return {};
+        var b = {};
+        for (var i = 0; i < a.length; ++i)
+        {
+            var p = a[i].split('=', 2);
+            if (p.length == 1)
+                b[p[0]] = "";
+            else
+                b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+        }
+
+        return b;
+    }
+}
+
+function randomString(length)
+{
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) 
+    {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+    return result;
+}
+
+function getAssetUrl(src)
+{
+    let url = src;
+    if (src.includes(window.location.host))
+    {
+        const arr = src.split(window.location.host);
+        if (!arr[0].endsWith("//") && !arr[0].endsWith("www.")) url = `https://cors-anywhere.herokuapp.com/${src}`;
+    }
+    else
+    {
+        url = `https://cors-anywhere.herokuapp.com/${src}`;
+    }
+
+    return url;
+}
+
+function endsWith(string, arr)
+{
+    let result = null;
+    if (string)
+    {
+        for (const pos of arr)
+        {
+            if (string.endsWith(pos))
+            {
+                result = pos;
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
+function Watcher(element, data, callback)
+{
+    this.data = data;
+    this.element = element;
+    this.callback = callback;
+    element.value = data;
+    element.addEventListener("change", this, false);
+}
+
+Watcher.prototype.handleEvent = function (event) 
+{
+    switch (event.type) 
+    {
+        case "change":
+            this.change(this.element.value);
+    }
+};
+
+Watcher.prototype.change = function (value) 
+{
+    this.data = value;
+    this.callback();
+};
+
+
 
 /***/ })
 

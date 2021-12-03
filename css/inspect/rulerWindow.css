@@ -1,0 +1,1 @@
+.ruler-window{position:fixed;top:0;left:0;padding:.5rem;background:rgba(25,25,31,.96);border-radius:.2rem;z-index:2147483000;transition:height .1s ease-in-out;display:flex}.ruler-window span{color:#fff;font:15px Nunito}.ruler-window svg{margin-left:.5rem;margin-right:.5rem}
