@@ -4074,9 +4074,12 @@ function processArrangements()
                     if (window.innerHeight - boundingBox.top > SCROLL_PAD)
                     {
                         let style = element.getAttribute("style");
-                        if (style) style = style.trim();
-                        if (style) if (!style.endsWith(";")) style = style+";" 
-                        else style = style = "";
+                        if (style)
+                        {
+                            style = style.trim();
+                            if (!style.endsWith(";")) style = style + ";";
+                        }
+                        else style = "";
                         state.fixed.push({ element, style });
                         element.setAttribute("style", `${style} position: absolute !important;`);
                     }

@@ -2881,17 +2881,11 @@ function addImages(zip)
 				zip.file(`images/${name.full}`, data, {binary: true});
 				doneImages++;
 
-				if (doneImages === state.images.length) 
-				{
-					addSvgs(zip);
-				}
+				if (doneImages === state.images.length) addSvgs(zip);
 			});
 		}
 	}
-	else
-	{
-		addSvgs(zip)
-	}
+	else addSvgs(zip)
 }
 
 function addSvgs(zip)
@@ -2901,16 +2895,10 @@ function addSvgs(zip)
 		for (let i = 0; i < state.svgs.length; i++)
 		{
 			zip.file(`svg/${Object(_utils_utility__WEBPACK_IMPORTED_MODULE_8__["randomString"])(10)}.svg`, state.svgs[i]);
-			if (i === state.svgs.length - 1) 
-			{
-				addVideos(zip);
-			}
+			if (i === state.svgs.length - 1) addVideos(zip);
 		}
 	}
-	else
-	{
-		addVideos(zip);
-	}
+	else addVideos(zip);
 }
 
 function addVideos(zip)
@@ -2930,17 +2918,11 @@ function addVideos(zip)
 				zip.file(`videos/${name.full}`, data, { binary: true });
 				doneVideos++;
 
-				if (doneVideos === state.videos.length) 
-				{
-					done(zip);
-				}
+				if (doneVideos === state.videos.length) done(zip);
 			});
 		}
 	}
-	else
-	{
-		done(zip);
-	}
+	else done(zip);
 }
 
 function done(zip)
