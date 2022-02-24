@@ -5373,7 +5373,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const CAPTURE_DELAY = 300;
+const CAPTURE_DELAY = 400;
 const CLEAN_UP_DELAY = 2000;
 const SCROLL_PAD = 200;
 const state = {
@@ -5382,6 +5382,8 @@ const state = {
 	arrangements: [],
 	num_arrangements: 0,
 	clean_up_timeout: null,
+    videos: [],
+    fixed_background: [],
 	stickies: [],
 	fixed: [],
     style: null
@@ -5404,10 +5406,25 @@ function prepare()
         }
     `;
     document.body.appendChild(state.style);
+
+    const videos = document.querySelectorAll("video");
+    for (const video of videos) 
+    {
+        if (!!(video.currentTime > 0 
+            && !video.paused 
+            && !video.ended 
+            && video.readyState > 2))
+        {
+            state.videos.push(video);
+            video.pause();
+        }
+    }
 }
 
 function reset()
 {
+    for (const video of state.videos) video.play();
+    state.video = [];
 	_utils_globalStyles__WEBPACK_IMPORTED_MODULE_1__["hideScrollbarLink"].remove();
     state.style.remove();
     state.style = null;
@@ -5417,17 +5434,28 @@ function prepareFullPage()
 {
 	prepare();
 
-	for (const element of document.querySelectorAll("body *"))
+	for (const element of document.querySelectorAll("body, body *"))
 	{
-		const position = window.getComputedStyle(element).getPropertyValue("position");
+        const styles = window.getComputedStyle(element);
+        const position = styles.getPropertyValue("position");
+        const backgroundAttachment = styles.getPropertyValue("background-attachment");
+        
+        const originalStyle = element.getAttribute("style") || "";
+        let newStyle = originalStyle;
+
 		if (position.includes("sticky"))
 		{
-			let style = element.getAttribute("style");
-			if (!style) style = "";
-			state.stickies.push({ element, style });
-			element.setAttribute("style", `position: relative !important; inset: auto !important; top: 0px; ${style}`);
+			state.stickies.push({ element, style: originalStyle });
+            newStyle = `position: relative !important; inset: auto !important; top: 0px; ${newStyle}`;
 		}
+        
+        if (backgroundAttachment === "fixed")
+        {
+            state.fixed_background.push({ element, style: originalStyle });
+            newStyle = `background-attachment: scroll !important; background-position: center !important; ${newStyle}`;
+        }
 
+        element.setAttribute("style", newStyle);
         element.scrollTop = 0;
 	}
 
@@ -5484,6 +5512,12 @@ function cleanUp()
 
 	for (const fix of state.fixed) { fix.element.setAttribute("style", fix.style); }
 	state.fixed = [];
+
+    for (const fb of state.fixed_background) 
+    { 
+        fb.element.setAttribute("style", fb.style); 
+    }
+	state.fixed_background = [];
 } 
 
 function processArrangements()
@@ -6470,6 +6504,11 @@ function initialize()
 				if (window === window.top) _debug_debug__WEBPACK_IMPORTED_MODULE_8__["default"].getLinks();
 			} break;
 
+			case "debug.getHSE":
+			{
+				if (window === window.top) _debug_debug__WEBPACK_IMPORTED_MODULE_8__["default"].getHSE();
+			} break;
+
 			case "debug.getTextNodes":
 			{
 				if (window === window.top) _debug_debug__WEBPACK_IMPORTED_MODULE_8__["default"].getTextNodes();
@@ -6535,7 +6574,24 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-  
+
+const HSE = [
+    "article",
+    "aside",
+    "details",
+    "figcaption",
+    "figure",
+    "footer",
+    "header",
+    "main",
+    "mark",
+    "nav",
+    "section",
+    "summary",
+    "time"
+];
+
+
 function getMetaTags()
 {
     const result = [];
@@ -6563,11 +6619,26 @@ function getLinks()
     _utils_msg__WEBPACK_IMPORTED_MODULE_0__["default"].sendMessage("debug.setLinks", {links: [...new Set(result)]});
 }
 
+function getHSE()
+{
+    const result = {};
+    
+    for (const tag of HSE)
+    {
+        const element = document.querySelector(tag);
+        if (element) result[tag] = true;
+        else result[tag] = false;
+    }
+    
+    _utils_msg__WEBPACK_IMPORTED_MODULE_0__["default"].sendMessage("debug.setHSE", {hse: result});
+}
+
 /* harmony default export */ __webpack_exports__["default"] = ({
     getMetaTags,
     getTextNodes: _spellcheck_spellcheck__WEBPACK_IMPORTED_MODULE_2__["default"].getTextNodes,
     showSpellMistakes: _spellcheck_spellcheck__WEBPACK_IMPORTED_MODULE_2__["default"].show,
-    getLinks
+    getLinks,
+    getHSE
 });
 
 /***/ }),
