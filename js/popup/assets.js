@@ -4044,6 +4044,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./tabs/svgs */ "./src/popup/assets/tabs/svgs.js");
 /* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./helpers */ "./src/popup/assets/helpers.js");
 /* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../utils/utility */ "./src/utils/utility.js");
+/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../utils/store */ "./src/utils/store.js");
+
 
 
 
@@ -4065,7 +4067,8 @@ const state = {
 	current_tab: "images",
 	images: [],
 	svgs: [],
-	videos: []
+	videos: [],
+	sort_by: "None"
 };
 
 const tabs = new _components_tabs__WEBPACK_IMPORTED_MODULE_3__["default"](document.querySelector(".tabs"), document.querySelector(".tab-root"));
@@ -4076,10 +4079,11 @@ const svgsTab = new _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__["default"](tabs);
 
 function initialize(images, svgs, videos)
 {
+	imagesTab.sortBy = state.sort_by;
+	videosTab.sortBy = state.sort_by;
 	tabs.toggleTab("images");
 
 	const names = { images: {}, videos: {} };
-
 	state.svgs = svgs;
 	for (const src of images)
 	{
@@ -4099,7 +4103,7 @@ function initialize(images, svgs, videos)
 		};
 		state.videos.push(video);
 	}
-	
+
 	imagesTab.setData(state.images);
 	videosTab.setData(state.videos);
 	svgsTab.setData(state.svgs);
@@ -4178,6 +4182,16 @@ function done(zip)
 	});
 }
 
+(async () => 
+{
+	try
+	{
+		const settings = await _utils_store__WEBPACK_IMPORTED_MODULE_9__["default"].get('settings');
+		if (settings.assets) state.sort_by = settings.assets.sort_by;
+	}
+	catch (err) { console.log(err); }
+})();
+
 chrome.runtime.onMessage.addListener((message, sender, sendMessage) => 
 {
 	switch (message.action)
@@ -4195,6 +4209,7 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) =>
 	state.url = tabs[0].url;
 	_utils_msg__WEBPACK_IMPORTED_MODULE_2__["default"].sendMessage("assets.get", {}, state.tab_id);
 });
+
 
 /***/ }),
 
@@ -4317,11 +4332,13 @@ function ImagesTab(tabs)
 {
     this.data = [];
     this.images = [];
+    this.sortBy = "None";
     let div = null;
     let message = null;
     let menu = null;
     let sortSelect = null;
     let loader = null;
+    let sizeLoaded = 0;
 
     tabs.roots["images"].initialize = (tabBody) => 
     {
@@ -4336,9 +4353,10 @@ function ImagesTab(tabs)
             <option>Size</option>
             </select>
         `);
-
+        sortSelect.value = this.sortBy;
         sortSelect.addEventListener("change", (e) => 
         {
+            this.sortBy = e.target.value; 
             render();
         });
 
@@ -4441,7 +4459,10 @@ function ImagesTab(tabs)
                     (async () => 
                     {
                         const size = await Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getSize"])(image.src);
+                        sizeLoaded ++;
                         if (size) this.images[index].setSize(size);
+                        if (sizeLoaded === this.images.length && 
+                            this.sortBy === "Size") render();
                     })();
                 }
                 catch (err)
@@ -4581,10 +4602,12 @@ function VideosTab(tabs)
 {
     this.data = [];
     this.videos = [];
+    this.sortBy = "None";
     let div = null;
     let message = null;
     let menu = null;
     let sortSelect = null;
+    let sizeLoaded = 0;
 
     tabs.roots["videos"].initialize = (tabBody) => 
     {
@@ -4598,9 +4621,10 @@ function VideosTab(tabs)
             <option>Size</option>
             </select>
         `);
-
+        sortSelect.value = this.sortBy;
         sortSelect.addEventListener("change", (e) => 
         {
+            this.sortBy = e.target.value; 
             render();
         });
 
@@ -4700,7 +4724,10 @@ function VideosTab(tabs)
                     (async () => 
                     {
                         const size = await Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["getSize"])(video.src);
+                        sizeLoaded++;
                         if (size) this.videos[index].setSize(size);
+                        if (sizeLoaded === this.videos.length && 
+                            this.sortBy === "Size") render();
                     })();
                 }
                 catch (err)
@@ -5001,6 +5028,110 @@ const sendMessage = (action, message, tabId) =>
 }
 
 /* harmony default export */ __webpack_exports__["default"] = ({ sendMessage });
+
+/***/ }),
+
+/***/ "./src/utils/polyfill.js":
+/*!*******************************!*\
+  !*** ./src/utils/polyfill.js ***!
+  \*******************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+
+
+const setLocalStorage = (data) => new Promise((resolve, reject) => 
+{
+	chrome.storage.local.set(data, () =>
+	{
+		chrome.runtime.lastError ? reject(Error(chrome.runtime.lastError.message)) : resolve();
+    });
+});
+
+const getLocalStorage = (keys) => new Promise((resolve, reject) =>
+{
+    chrome.storage.local.get(keys, (result) =>
+    {
+        chrome.runtime.lastError ? reject(Error(chrome.runtime.lastError.message)) : resolve(result);
+    });
+});
+
+const executeScript = (tabId, options) => new Promise((resolve, reject) => 
+{
+	chrome.tabs.executeScript(tabId, options,
+	_ =>
+	{
+		let e = chrome.runtime.lastError;
+		if (e !== undefined)
+		{
+			reject(e);
+		}
+		else
+		{
+			resolve();
+		}
+	});
+});
+
+const captureVisibleArea = () => new Promise((resolve, reject) => 
+{
+	chrome.tabs.captureVisibleTab(null, {format: "png"}, (dataURI) => 
+	{
+		resolve(dataURI);
+	});
+});
+
+/* harmony default export */ __webpack_exports__["default"] = ({ 
+	setLocalStorage, 
+	getLocalStorage, 
+	executeScript,
+	captureVisibleArea
+});
+
+/***/ }),
+
+/***/ "./src/utils/store.js":
+/*!****************************!*\
+  !*** ./src/utils/store.js ***!
+  \****************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _polyfill__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./polyfill */ "./src/utils/polyfill.js");
+
+
+
+const set = async (info) =>
+{
+	try
+	{
+		const res = await _polyfill__WEBPACK_IMPORTED_MODULE_0__["default"].setLocalStorage(info);
+	}	
+	catch (err)
+	{
+		console.log(err);
+		return err;
+	}
+}
+
+const get = async (key) => 
+{
+	try
+	{
+		const result = await _polyfill__WEBPACK_IMPORTED_MODULE_0__["default"].getLocalStorage(key);
+		return result[key];
+	}
+	catch (err)
+	{
+		return err;
+	}
+}
+
+/* harmony default export */ __webpack_exports__["default"] = ({ set, get });
 
 /***/ }),
 
