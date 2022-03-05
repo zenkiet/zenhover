@@ -7072,7 +7072,6 @@ function isSheetPresent(href)
 	{
 		try 
 		{
-			const rules = internalSheet.rules || internalSheet.cssRules;
 			if (internalSheet.href === href)
 			{
 				present = true; 
