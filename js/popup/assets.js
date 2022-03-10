@@ -2149,21 +2149,38 @@ function store(obj, elem, key)
 /*!**************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/constants.js ***!
   \**************************************************************/
-/*! exports provided: DESCENDANT_OPERATOR, CHILD_OPERATOR, SELECTOR_SEPARATOR, INVALID_ID_RE, INVALID_CLASS_RE, SELECTOR_PATTERN */
+/*! exports provided: NONE_OPERATOR, DESCENDANT_OPERATOR, CHILD_OPERATOR, OPERATOR_DATA, SELECTOR_SEPARATOR, INVALID_ID_RE, INVALID_CLASS_RE, SELECTOR_PATTERN */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "NONE_OPERATOR", function() { return NONE_OPERATOR; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "DESCENDANT_OPERATOR", function() { return DESCENDANT_OPERATOR; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CHILD_OPERATOR", function() { return CHILD_OPERATOR; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "OPERATOR_DATA", function() { return OPERATOR_DATA; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SELECTOR_SEPARATOR", function() { return SELECTOR_SEPARATOR; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "INVALID_ID_RE", function() { return INVALID_ID_RE; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "INVALID_CLASS_RE", function() { return INVALID_CLASS_RE; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SELECTOR_PATTERN", function() { return SELECTOR_PATTERN; });
 /* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./types */ "./node_modules/css-selector-generator/esm/types.js");
 
+const NONE_OPERATOR = '';
 const DESCENDANT_OPERATOR = ' > ';
 const CHILD_OPERATOR = ' ';
+const OPERATOR_DATA = {
+    [_types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].NONE]: {
+        type: _types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].NONE,
+        value: NONE_OPERATOR
+    },
+    [_types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].DESCENDANT]: {
+        type: _types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].DESCENDANT,
+        value: DESCENDANT_OPERATOR
+    },
+    [_types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].CHILD]: {
+        type: _types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].CHILD,
+        value: CHILD_OPERATOR
+    }
+};
 const SELECTOR_SEPARATOR = ', ';
 // RegExp that will match invalid patterns that can be used in ID attribute.
 const INVALID_ID_RE = new RegExp([
@@ -2225,7 +2242,7 @@ function getCssSelector(needle, custom_options = {}) {
     }
     let closestIdentifiableParent = updateIdentifiableParent();
     while (closestIdentifiableParent) {
-        const { foundElements, selector } = closestIdentifiableParent;
+        const { foundElements, selector, } = closestIdentifiableParent;
         if (Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_3__["testSelector"])(elements, selector, options.root)) {
             return selector;
         }
@@ -2251,12 +2268,12 @@ function getCssSelector(needle, custom_options = {}) {
 /*!***********************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/selector-attribute.js ***!
   \***********************************************************************/
-/*! exports provided: ATTRIBUTE_BLACKLIST, attributeNodeToSimplifiedSelector, attributeNodeToSelector, isValidAttributeNode, getElementAttributeSelectors, getAttributeSelectors */
+/*! exports provided: attributeBlacklistMatch, attributeNodeToSimplifiedSelector, attributeNodeToSelector, isValidAttributeNode, getElementAttributeSelectors, getAttributeSelectors */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ATTRIBUTE_BLACKLIST", function() { return ATTRIBUTE_BLACKLIST; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "attributeBlacklistMatch", function() { return attributeBlacklistMatch; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "attributeNodeToSimplifiedSelector", function() { return attributeNodeToSimplifiedSelector; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "attributeNodeToSelector", function() { return attributeNodeToSelector; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isValidAttributeNode", function() { return isValidAttributeNode; });
@@ -2267,29 +2284,30 @@ __webpack_require__.r(__webpack_exports__);
 
 
 // List of attributes to be ignored. These are handled by different selector types.
-const ATTRIBUTE_BLACKLIST = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_1__["convertMatchListToRegExp"])([
+const attributeBlacklistMatch = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_1__["createPatternMatcher"])([
     'class',
     'id',
     // Angular attributes
-    'ng-*'
+    'ng-*',
 ]);
 /**
  * Get simplified attribute selector for an element.
  */
-function attributeNodeToSimplifiedSelector({ nodeName }) {
+function attributeNodeToSimplifiedSelector({ nodeName, }) {
     return `[${nodeName}]`;
 }
 /**
  * Get attribute selector for an element.
  */
-function attributeNodeToSelector({ nodeName, nodeValue }) {
-    return `[${nodeName}='${Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_0__["sanitizeSelectorItem"])(nodeValue)}']`;
+function attributeNodeToSelector({ nodeName, nodeValue, }) {
+    const selector = `[${nodeName}='${Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_0__["sanitizeSelectorItem"])(nodeValue)}']`;
+    return selector;
 }
 /**
  * Checks whether attribute should be used as a selector.
  */
 function isValidAttributeNode({ nodeName }) {
-    return !ATTRIBUTE_BLACKLIST.test(nodeName);
+    return !attributeBlacklistMatch(nodeName);
 }
 /**
  * Get attribute selectors for an element.
@@ -2299,7 +2317,7 @@ function getElementAttributeSelectors(element) {
         .filter(isValidAttributeNode);
     return [
         ...validAttributes.map(attributeNodeToSimplifiedSelector),
-        ...validAttributes.map(attributeNodeToSelector)
+        ...validAttributes.map(attributeNodeToSelector),
     ];
 }
 /**
@@ -2363,8 +2381,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getElementFallbackSelector", function() { return getElementFallbackSelector; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getFallbackSelector", function() { return getFallbackSelector; });
 /* harmony import */ var _utilities_dom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities-dom */ "./node_modules/css-selector-generator/esm/utilities-dom.js");
-/* harmony import */ var _selector_nth_child__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./selector-nth-child */ "./node_modules/css-selector-generator/esm/selector-nth-child.js");
-/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./constants */ "./node_modules/css-selector-generator/esm/constants.js");
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./constants */ "./node_modules/css-selector-generator/esm/constants.js");
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./types */ "./node_modules/css-selector-generator/esm/types.js");
+/* harmony import */ var _utilities_element_data__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./utilities-element-data */ "./node_modules/css-selector-generator/esm/utilities-element-data.js");
+
 
 
 
@@ -2372,16 +2392,21 @@ __webpack_require__.r(__webpack_exports__);
  * Creates fallback selector for single element.
  */
 function getElementFallbackSelector(element) {
-    const selectors = Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_0__["getParents"])([element])
-        .map((element) => Object(_selector_nth_child__WEBPACK_IMPORTED_MODULE_1__["getNthChildSelector"])([element])[0])
-        .reverse();
-    return [':root', ...selectors].join(_constants__WEBPACK_IMPORTED_MODULE_2__["DESCENDANT_OPERATOR"]);
+    const parentElements = Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_0__["getElementParents"])(element).reverse();
+    const elementsData = parentElements.map((element) => {
+        const elementData = Object(_utilities_element_data__WEBPACK_IMPORTED_MODULE_3__["createElementData"])(element, [_types__WEBPACK_IMPORTED_MODULE_2__["CssSelectorType"].nthchild], _types__WEBPACK_IMPORTED_MODULE_2__["OPERATOR"].DESCENDANT);
+        elementData.selectors.nthchild.forEach((selectorData) => {
+            selectorData.include = true;
+        });
+        return elementData;
+    });
+    return [':root', ...elementsData.map(_utilities_element_data__WEBPACK_IMPORTED_MODULE_3__["constructElementSelector"])].join('');
 }
 /**
  * Creates chain of :nth-child selectors from root to the elements.
  */
 function getFallbackSelector(elements) {
-    return elements.map(getElementFallbackSelector).join(_constants__WEBPACK_IMPORTED_MODULE_2__["SELECTOR_SEPARATOR"]);
+    return elements.map(getElementFallbackSelector).join(_constants__WEBPACK_IMPORTED_MODULE_1__["SELECTOR_SEPARATOR"]);
 }
 //# sourceMappingURL=selector-fallback.js.map
 
@@ -2391,11 +2416,12 @@ function getFallbackSelector(elements) {
 /*!****************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/selector-id.js ***!
   \****************************************************************/
-/*! exports provided: getIdSelector */
+/*! exports provided: getElementIdSelectors, getIdSelector */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getElementIdSelectors", function() { return getElementIdSelectors; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getIdSelector", function() { return getIdSelector; });
 /* harmony import */ var _utilities_selectors__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities-selectors */ "./node_modules/css-selector-generator/esm/utilities-selectors.js");
 /* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./constants */ "./node_modules/css-selector-generator/esm/constants.js");
@@ -2405,18 +2431,23 @@ __webpack_require__.r(__webpack_exports__);
 
 /**
  * Get ID selector for an element.
- */
-function getIdSelector(elements) {
-    if (elements.length === 0 || elements.length > 1) {
-        return [];
-    }
-    const element = elements[0];
+ * */
+function getElementIdSelectors(element) {
     const id = element.getAttribute('id') || '';
     const selector = `#${Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_0__["sanitizeSelectorItem"])(id)}`;
+    const rootNode = element.getRootNode({ composed: false });
     return (!_constants__WEBPACK_IMPORTED_MODULE_1__["INVALID_ID_RE"].test(id)
-        && Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_2__["testSelector"])([element], selector, element.ownerDocument))
+        && Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_2__["testSelector"])([element], selector, rootNode))
         ? [selector]
         : [];
+}
+/**
+ * Get ID selector for an element.
+ */
+function getIdSelector(elements) {
+    return (elements.length === 0 || elements.length > 1)
+        ? []
+        : getElementIdSelectors(elements[0]);
 }
 //# sourceMappingURL=selector-id.js.map
 
@@ -2507,21 +2538,32 @@ function getNthOfTypeSelector(elements) {
 /*!*****************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/selector-tag.js ***!
   \*****************************************************************/
-/*! exports provided: getTagSelector */
+/*! exports provided: getElementTagSelectors, getTagSelector */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getElementTagSelectors", function() { return getElementTagSelectors; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getTagSelector", function() { return getTagSelector; });
 /* harmony import */ var _utilities_selectors__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities-selectors */ "./node_modules/css-selector-generator/esm/utilities-selectors.js");
+/* harmony import */ var _utilities_data__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utilities-data */ "./node_modules/css-selector-generator/esm/utilities-data.js");
+
 
 /**
  * Get tag selector for an element.
  */
+function getElementTagSelectors(element) {
+    return [
+        Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_0__["sanitizeSelectorItem"])(element.tagName.toLowerCase()),
+    ];
+}
+/**
+ * Get tag selector for list of elements.
+ */
 function getTagSelector(elements) {
-    const selectors = [...new Set(elements.map((element) => {
-            return Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_0__["sanitizeSelectorItem"])(element.tagName.toLowerCase());
-        }))];
+    const selectors = [
+        ...new Set(Object(_utilities_data__WEBPACK_IMPORTED_MODULE_1__["flattenArray"])(elements.map(getElementTagSelectors))),
+    ];
     return (selectors.length === 0 || selectors.length > 1) ? [] : [selectors[0]];
 }
 //# sourceMappingURL=selector-tag.js.map
@@ -2532,12 +2574,19 @@ function getTagSelector(elements) {
 /*!**********************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/types.js ***!
   \**********************************************************/
-/*! exports provided: CssSelectorType */
+/*! exports provided: OPERATOR, CssSelectorType */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "OPERATOR", function() { return OPERATOR; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "CssSelectorType", function() { return CssSelectorType; });
+var OPERATOR;
+(function (OPERATOR) {
+    OPERATOR["NONE"] = "none";
+    OPERATOR["DESCENDANT"] = "descendant";
+    OPERATOR["CHILD"] = "child";
+})(OPERATOR || (OPERATOR = {}));
 var CssSelectorType;
 (function (CssSelectorType) {
     CssSelectorType["id"] = "id";
@@ -2555,7 +2604,7 @@ var CssSelectorType;
 /*!*******************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/utilities-data.js ***!
   \*******************************************************************/
-/*! exports provided: getIntersection, flattenArray, wildcardToRegExp, convertMatchListToRegExp */
+/*! exports provided: getIntersection, flattenArray, wildcardToRegExp, createPatternMatcher */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2563,7 +2612,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getIntersection", function() { return getIntersection; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "flattenArray", function() { return flattenArray; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "wildcardToRegExp", function() { return wildcardToRegExp; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "convertMatchListToRegExp", function() { return convertMatchListToRegExp; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createPatternMatcher", function() { return createPatternMatcher; });
+/* harmony import */ var _utilities_options__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities-options */ "./node_modules/css-selector-generator/esm/utilities-options.js");
+/* harmony import */ var _utilities_messages__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utilities-messages */ "./node_modules/css-selector-generator/esm/utilities-messages.js");
+
+
 /**
  * Creates array containing only items included in all input arrays.
  */
@@ -2593,20 +2646,34 @@ function wildcardToRegExp(input) {
         .replace(/\*/g, '.+');
 }
 /**
- * Converts list of white/blacklist items to a single RegExp.
+ * Creates function that will test list of provided matchers against input.
+ * Used for white/blacklist functionality.
  */
-function convertMatchListToRegExp(list = []) {
-    if (list.length === 0) {
-        return new RegExp('.^');
-    }
-    const combined_re = list
-        .map((item) => {
-        return (typeof item === 'string')
-            ? '^' + wildcardToRegExp(item) + '$'
-            : item.source;
-    })
-        .join('|');
-    return new RegExp(combined_re);
+function createPatternMatcher(list) {
+    const matchFunctions = list.map((item) => {
+        if (Object(_utilities_options__WEBPACK_IMPORTED_MODULE_0__["isRegExp"])(item)) {
+            return (input) => item.test(input);
+        }
+        if (typeof item === 'function') {
+            return (input) => {
+                const result = item(input);
+                if (typeof result !== 'boolean') {
+                    // eslint-disable-next-line max-len
+                    Object(_utilities_messages__WEBPACK_IMPORTED_MODULE_1__["showWarning"])('pattern matcher function invalid', 'Provided pattern matching function does not return boolean. It\'s result will be ignored.', item);
+                    return false;
+                }
+                return result;
+            };
+        }
+        if (typeof item === 'string') {
+            const re = new RegExp('^' + wildcardToRegExp(item) + '$');
+            return (input) => re.test(input);
+        }
+        // eslint-disable-next-line max-len
+        Object(_utilities_messages__WEBPACK_IMPORTED_MODULE_1__["showWarning"])('pattern matcher invalid', 'Pattern matching only accepts strings, regular expressions and/or functions. This item is invalid and will be ignored.', item);
+        return () => false;
+    });
+    return (input) => matchFunctions.some((matchFunction) => matchFunction(input));
 }
 //# sourceMappingURL=utilities-data.js.map
 
@@ -2653,6 +2720,7 @@ function testMultiSelector(element, selector, root) {
  * Find all parents of a single element.
  */
 function getElementParents(element, root) {
+    root = root !== null && root !== void 0 ? root : getRootNode(element);
     const result = [];
     let parent = element;
     while (Object(iselement__WEBPACK_IMPORTED_MODULE_0__["default"])(parent) && parent !== root) {
@@ -2665,7 +2733,6 @@ function getElementParents(element, root) {
  * Find all common parents of elements.
  */
 function getParents(elements, root) {
-    root = root !== null && root !== void 0 ? root : getRootNode(elements[0]);
     return Object(_utilities_data__WEBPACK_IMPORTED_MODULE_1__["getIntersection"])(elements.map((element) => getElementParents(element, root)));
 }
 /**
@@ -2675,6 +2742,72 @@ function getRootNode(element) {
     return element.ownerDocument.querySelector(':root');
 }
 //# sourceMappingURL=utilities-dom.js.map
+
+/***/ }),
+
+/***/ "./node_modules/css-selector-generator/esm/utilities-element-data.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/css-selector-generator/esm/utilities-element-data.js ***!
+  \***************************************************************************/
+/*! exports provided: createElementSelectorData, createElementData, constructElementSelector */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createElementSelectorData", function() { return createElementSelectorData; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createElementData", function() { return createElementData; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "constructElementSelector", function() { return constructElementSelector; });
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./types */ "./node_modules/css-selector-generator/esm/types.js");
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./constants */ "./node_modules/css-selector-generator/esm/constants.js");
+/* harmony import */ var _utilities_selectors__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utilities-selectors */ "./node_modules/css-selector-generator/esm/utilities-selectors.js");
+
+
+
+/**
+ * Creates data describing a specific selector.
+ */
+function createElementSelectorData(selector) {
+    return {
+        value: selector,
+        include: false,
+    };
+}
+/**
+ * Creates data describing an element within CssSelector chain.
+ */
+function createElementData(element, selectorTypes, operator = _types__WEBPACK_IMPORTED_MODULE_0__["OPERATOR"].NONE) {
+    const selectors = {};
+    selectorTypes.forEach((selectorType) => {
+        Reflect.set(selectors, selectorType, Object(_utilities_selectors__WEBPACK_IMPORTED_MODULE_2__["getElementSelectorsByType"])(element, selectorType)
+            .map(createElementSelectorData));
+    });
+    return {
+        element,
+        operator: _constants__WEBPACK_IMPORTED_MODULE_1__["OPERATOR_DATA"][operator],
+        selectors,
+    };
+}
+/**
+ * Constructs selector from element data.
+ */
+function constructElementSelector({ selectors, operator }) {
+    let pattern = [..._constants__WEBPACK_IMPORTED_MODULE_1__["SELECTOR_PATTERN"]];
+    // `nthoftype` already contains tag
+    if (selectors[_types__WEBPACK_IMPORTED_MODULE_0__["CssSelectorType"].tag] && selectors[_types__WEBPACK_IMPORTED_MODULE_0__["CssSelectorType"].nthoftype]) {
+        pattern = pattern.filter((item) => item !== _types__WEBPACK_IMPORTED_MODULE_0__["CssSelectorType"].tag);
+    }
+    let selector = '';
+    pattern.forEach((selectorType) => {
+        const selectorsOfType = selectors[selectorType] || [];
+        selectorsOfType.forEach(({ value, include }) => {
+            if (include) {
+                selector += value;
+            }
+        });
+    });
+    return (operator.value + selector);
+}
+//# sourceMappingURL=utilities-element-data.js.map
 
 /***/ }),
 
@@ -2763,7 +2896,7 @@ function isRegExp(input) {
  * @param input
  */
 function isCssSelectorMatch(input) {
-    return (typeof input === 'string') || isRegExp(input);
+    return ['string', 'function'].includes(typeof input) || isRegExp(input);
 }
 /**
  * Converts input to a list of valid values for whitelist or blacklist.
@@ -2904,7 +3037,7 @@ function generateOffsets(size = 1) {
 /*!************************************************************************!*\
   !*** ./node_modules/css-selector-generator/esm/utilities-selectors.js ***!
   \************************************************************************/
-/*! exports provided: ESCAPED_COLON, SPECIAL_CHARACTERS_RE, sanitizeSelectorItem, legacySanitizeSelectorItem, SELECTOR_TYPE_GETTERS, getSelectorsByType, filterSelectors, orderSelectors, getAllSelectors, getSelectorsList, getSelectorsToGet, combineSelectorTypes, getTypeCombinations, constructSelectors, constructSelectorType, constructSelector, getSelectorWithinRoot, getClosestIdentifiableParent, sanitizeSelectorNeedle */
+/*! exports provided: ESCAPED_COLON, SPECIAL_CHARACTERS_RE, sanitizeSelectorItem, legacySanitizeSelectorItem, SELECTOR_TYPE_GETTERS, ELEMENT_SELECTOR_TYPE_GETTERS, getElementSelectorsByType, getSelectorsByType, filterSelectors, orderSelectors, getAllSelectors, getSelectorsList, getSelectorsToGet, combineSelectorTypes, getTypeCombinations, constructSelectors, constructSelectorType, constructSelector, getSelectorWithinRoot, getClosestIdentifiableParent, sanitizeSelectorNeedle */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2914,6 +3047,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "sanitizeSelectorItem", function() { return sanitizeSelectorItem; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "legacySanitizeSelectorItem", function() { return legacySanitizeSelectorItem; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "SELECTOR_TYPE_GETTERS", function() { return SELECTOR_TYPE_GETTERS; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ELEMENT_SELECTOR_TYPE_GETTERS", function() { return ELEMENT_SELECTOR_TYPE_GETTERS; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getElementSelectorsByType", function() { return getElementSelectorsByType; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getSelectorsByType", function() { return getSelectorsByType; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "filterSelectors", function() { return filterSelectors; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "orderSelectors", function() { return orderSelectors; });
@@ -2994,8 +3129,22 @@ const SELECTOR_TYPE_GETTERS = {
     class: _selector_class__WEBPACK_IMPORTED_MODULE_3__["getClassSelectors"],
     attribute: _selector_attribute__WEBPACK_IMPORTED_MODULE_2__["getAttributeSelectors"],
     nthchild: _selector_nth_child__WEBPACK_IMPORTED_MODULE_5__["getNthChildSelector"],
-    nthoftype: _selector_nth_of_type__WEBPACK_IMPORTED_MODULE_6__["getNthOfTypeSelector"]
+    nthoftype: _selector_nth_of_type__WEBPACK_IMPORTED_MODULE_6__["getNthOfTypeSelector"],
 };
+const ELEMENT_SELECTOR_TYPE_GETTERS = {
+    tag: _selector_tag__WEBPACK_IMPORTED_MODULE_7__["getElementTagSelectors"],
+    id: _selector_id__WEBPACK_IMPORTED_MODULE_4__["getElementIdSelectors"],
+    class: _selector_class__WEBPACK_IMPORTED_MODULE_3__["getElementClassSelectors"],
+    attribute: _selector_attribute__WEBPACK_IMPORTED_MODULE_2__["getElementAttributeSelectors"],
+    nthchild: _selector_nth_child__WEBPACK_IMPORTED_MODULE_5__["getElementNthChildSelector"],
+    nthoftype: _selector_nth_of_type__WEBPACK_IMPORTED_MODULE_6__["getElementNthOfTypeSelector"],
+};
+/**
+ * Creates selector of given type for single element.
+ */
+function getElementSelectorsByType(element, selectorType) {
+    return ELEMENT_SELECTOR_TYPE_GETTERS[selectorType](element);
+}
 /**
  * Returns list of selectors of given type for the element.
  */
@@ -3007,17 +3156,17 @@ function getSelectorsByType(elements, selector_type) {
 /**
  * Remove blacklisted selectors from list.
  */
-function filterSelectors(list = [], blacklist_re, whitelist_re) {
-    return list.filter((item) => (whitelist_re.test(item)
-        || !blacklist_re.test(item)));
+function filterSelectors(list = [], matchBlacklist, matchWhitelist) {
+    return list.filter((item) => (matchWhitelist(item)
+        || !matchBlacklist(item)));
 }
 /**
  * Prioritise whitelisted selectors in list.
  */
-function orderSelectors(list = [], whitelist_re) {
+function orderSelectors(list = [], matchWhitelist) {
     return list.sort((a, b) => {
-        const a_is_whitelisted = whitelist_re.test(a);
-        const b_is_whitelisted = whitelist_re.test(b);
+        const a_is_whitelisted = matchWhitelist(a);
+        const b_is_whitelisted = matchWhitelist(b);
         if (a_is_whitelisted && !b_is_whitelisted) {
             return -1;
         }
@@ -3040,13 +3189,13 @@ function getAllSelectors(elements, root, options) {
  * Creates object containing all selector types and their potential values.
  */
 function getSelectorsList(elements, options) {
-    const { blacklist, whitelist, combineWithinSelector, maxCombinations } = options;
-    const blacklist_re = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_8__["convertMatchListToRegExp"])(blacklist);
-    const whitelist_re = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_8__["convertMatchListToRegExp"])(whitelist);
+    const { blacklist, whitelist, combineWithinSelector, maxCombinations, } = options;
+    const matchBlacklist = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_8__["createPatternMatcher"])(blacklist);
+    const matchWhitelist = Object(_utilities_data__WEBPACK_IMPORTED_MODULE_8__["createPatternMatcher"])(whitelist);
     const reducer = (data, selector_type) => {
         const selectors_by_type = getSelectorsByType(elements, selector_type);
-        const filtered_selectors = filterSelectors(selectors_by_type, blacklist_re, whitelist_re);
-        const found_selectors = orderSelectors(filtered_selectors, whitelist_re);
+        const filtered_selectors = filterSelectors(selectors_by_type, matchBlacklist, matchWhitelist);
+        const found_selectors = orderSelectors(filtered_selectors, matchWhitelist);
         data[selector_type] = combineWithinSelector
             ? Object(_utilities_powerset__WEBPACK_IMPORTED_MODULE_12__["getPowerSet"])(found_selectors, { maxResults: maxCombinations })
             : found_selectors.map((item) => [item]);
@@ -3059,7 +3208,7 @@ function getSelectorsList(elements, options) {
  * Creates list of selector types that we will need to generate the selector.
  */
 function getSelectorsToGet(options) {
-    const { selectors, includeTag } = options;
+    const { selectors, includeTag, } = options;
     const selectors_to_get = [].concat(selectors);
     if (includeTag && !selectors_to_get.includes('tag')) {
         selectors_to_get.push('tag');
@@ -3081,7 +3230,7 @@ function addTagTypeIfNeeded(list) {
  * Generates list of possible selector type combinations.
  */
 function combineSelectorTypes(options) {
-    const { selectors, combineBetweenSelectors, includeTag, maxCandidates } = options;
+    const { selectors, combineBetweenSelectors, includeTag, maxCandidates, } = options;
     const combinations = combineBetweenSelectors
         ? Object(_utilities_powerset__WEBPACK_IMPORTED_MODULE_12__["getPowerSet"])(selectors, { maxResults: maxCandidates })
         : selectors.map(item => [item]);
@@ -3142,7 +3291,7 @@ function constructSelector(selectorData = {}) {
 function generateCandidateCombinations(selectors, rootSelector) {
     return [
         ...selectors.map((selector) => rootSelector + _constants__WEBPACK_IMPORTED_MODULE_1__["CHILD_OPERATOR"] + selector),
-        ...selectors.map((selector) => rootSelector + _constants__WEBPACK_IMPORTED_MODULE_1__["DESCENDANT_OPERATOR"] + selector)
+        ...selectors.map((selector) => rootSelector + _constants__WEBPACK_IMPORTED_MODULE_1__["DESCENDANT_OPERATOR"] + selector),
     ];
 }
 /**
@@ -3178,14 +3327,14 @@ function getClosestIdentifiableParent(elements, root, rootSelector = '', options
     const candidatesList = [
         (elements.length > 1) ? elements : [],
         ...Object(_utilities_dom__WEBPACK_IMPORTED_MODULE_9__["getParents"])(elements, root)
-            .map((element) => [element])
+            .map((element) => [element]),
     ];
     for (const currentElements of candidatesList) {
         const result = getSelectorWithinRoot(currentElements, root, rootSelector, options);
         if (result) {
             return {
                 foundElements: currentElements,
-                selector: result
+                selector: result,
             };
         }
     }
