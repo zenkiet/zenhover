@@ -43,7 +43,7 @@
 /******/
 /******/ 	// script path function
 /******/ 	function jsonpScriptSrc(chunkId) {
-/******/ 		return __webpack_require__.p + "" + chunkId + "." + "4d837019737b97e2bd31" + ".js"
+/******/ 		return __webpack_require__.p + "" + chunkId + "." + "ac4e80ff33a2242b6e26" + ".js"
 /******/ 	}
 /******/
 /******/ 	// The require function
@@ -6474,7 +6474,7 @@ const state = {
 	try
 	{
 		const screenshots = await _utils_store__WEBPACK_IMPORTED_MODULE_4__["default"].get("screenshots");
-		if (_utils_platform__WEBPACK_IMPORTED_MODULE_6__["default"].browser.name === "Firefox")
+		if (_utils_platform__WEBPACK_IMPORTED_MODULE_6__["default"].browser.name === "Firefox" && !(params && params.r))
 		{
 			const stripedScreenshots = [];
 			const canvas = _utils_element__WEBPACK_IMPORTED_MODULE_3__["default"].create("<canvas></canvas>");
