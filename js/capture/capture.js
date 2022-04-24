@@ -43,7 +43,7 @@
 /******/
 /******/ 	// script path function
 /******/ 	function jsonpScriptSrc(chunkId) {
-/******/ 		return __webpack_require__.p + "" + chunkId + "." + "ac4e80ff33a2242b6e26" + ".js"
+/******/ 		return __webpack_require__.p + "" + chunkId + "." + "06de9418843941de3fc8" + ".js"
 /******/ 	}
 /******/
 /******/ 	// The require function
@@ -6469,6 +6469,8 @@ const state = {
 	uris: []
 };
 
+const params = Object(_utils_utility__WEBPACK_IMPORTED_MODULE_7__["qs"])(window.location.href);
+
 (async () => 
 {
 	try
@@ -6508,9 +6510,7 @@ const state = {
 })();
 
 function initialize(screenshots)
-{
-	const params = Object(_utils_utility__WEBPACK_IMPORTED_MODULE_7__["qs"])(window.location.href);
-	
+{	
 	if (params && params.r)
 	{
 		const rect = JSON.parse(atob(atob(params.r)));
