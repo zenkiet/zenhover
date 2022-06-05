@@ -4191,9 +4191,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _tabs_images__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./tabs/images */ "./src/popup/assets/tabs/images.js");
 /* harmony import */ var _tabs_videos__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./tabs/videos */ "./src/popup/assets/tabs/videos.js");
 /* harmony import */ var _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./tabs/svgs */ "./src/popup/assets/tabs/svgs.js");
-/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./helpers */ "./src/popup/assets/helpers.js");
-/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ../../utils/utility */ "./src/utils/utility.js");
-/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../utils/store */ "./src/utils/store.js");
+/* harmony import */ var _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./tabs/lottieFiles */ "./src/popup/assets/tabs/lottieFiles.js");
+/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./helpers */ "./src/popup/assets/helpers.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../utils/utility */ "./src/utils/utility.js");
+/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../utils/store */ "./src/utils/store.js");
+
 
 
 
@@ -4217,6 +4219,7 @@ const state = {
 	images: [],
 	svgs: [],
 	videos: [],
+	lotties: [],
 	sort_by: "None"
 };
 
@@ -4225,20 +4228,21 @@ const tabs = new _components_tabs__WEBPACK_IMPORTED_MODULE_3__["default"](docume
 const imagesTab = new _tabs_images__WEBPACK_IMPORTED_MODULE_4__["default"](tabs);
 const videosTab = new _tabs_videos__WEBPACK_IMPORTED_MODULE_5__["default"](tabs);
 const svgsTab = new _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__["default"](tabs);
+const lottieFilesTab = new _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_7__["default"](tabs);
 
-function initialize(images, svgs, videos)
+function initialize(images, svgs, videos, lotties)
 {
 	imagesTab.sortBy = state.sort_by;
 	videosTab.sortBy = state.sort_by;
 	tabs.toggleTab("images");
 
-	const names = { images: {}, videos: {} };
+	const names = { images: {}, videos: {}, lotties: {} };
 	state.svgs = svgs;
 	for (const src of images)
 	{
 		const image = {
 			src,
-			...Object(_helpers__WEBPACK_IMPORTED_MODULE_7__["getFileName"])(src, "jpg", FORMAT_IMAGES, names.images)
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "jpg", FORMAT_IMAGES, names.images)
 		};
 
 		state.images.push(image);
@@ -4248,14 +4252,24 @@ function initialize(images, svgs, videos)
 	{
 		const video = {
 			src,
-			...Object(_helpers__WEBPACK_IMPORTED_MODULE_7__["getFileName"])(src, "mp4", FORMAT_VIDEOS, names.videos)
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "mp4", FORMAT_VIDEOS, names.videos)
 		};
 		state.videos.push(video);
+	}
+
+	for (const src of lotties)
+	{
+		const lottie = {
+			src,
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "json", ["json"], names.lotties)
+		}
+		state.lotties.push(lottie);
 	}
 
 	imagesTab.setData(state.images);
 	videosTab.setData(state.videos);
 	svgsTab.setData(state.svgs);
+	lottieFilesTab.setData(state.lotties);
 
 	saveAllBtn.addEventListener("click", saveAll);
 }
@@ -4294,7 +4308,7 @@ function addSvgs(zip)
 	{
 		for (let i = 0; i < state.svgs.length; i++)
 		{
-			zip.file(`svg/${Object(_utils_utility__WEBPACK_IMPORTED_MODULE_8__["randomString"])(10)}.svg`, state.svgs[i]);
+			zip.file(`svg/${Object(_utils_utility__WEBPACK_IMPORTED_MODULE_9__["randomString"])(10)}.svg`, state.svgs[i]);
 			if (i === state.svgs.length - 1) addVideos(zip);
 		}
 	}
@@ -4316,7 +4330,29 @@ function addVideos(zip)
 				zip.file(`videos/${video.full}`, data, { binary: true });
 				doneVideos++;
 
-				if (doneVideos === state.videos.length) done(zip);
+				if (doneVideos === state.videos.length) addLotties(zip);
+			});
+		}
+	}
+	else addLotties(zip);
+}
+
+function addLotties(zip)
+{
+	let doneLotties = 0;
+	if (state.lotties.length)
+	{
+		for (let i = 0; i < state.lotties.length; i++)
+		{
+			const lottie = state.lotties[i];
+			JSZipUtils.getBinaryContent(lottie.src, function (err, data) 
+			{
+				if (err) console.log(err);
+
+				zip.file(`lottie/${lottie.full}`, data, { binary: true });
+				doneLotties++;
+
+				if (doneLotties === state.lotties.length) done(zip);
 			});
 		}
 	}
@@ -4335,7 +4371,7 @@ function done(zip)
 {
 	try
 	{
-		const settings = await _utils_store__WEBPACK_IMPORTED_MODULE_9__["default"].get('settings');
+		const settings = await _utils_store__WEBPACK_IMPORTED_MODULE_10__["default"].get('settings');
 		if (settings.assets) state.sort_by = settings.assets.sort_by;
 	}
 	catch (err) { console.log(err); }
@@ -4347,7 +4383,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendMessage) =>
 	{
 		case "assets.set":
 		{
-			initialize(message.images, message.svgs, message.videos)
+			initialize(message.images, message.svgs, message.videos, message.lotties)
 		} break;
 	}
 });
@@ -4409,7 +4445,7 @@ function getFileName(src, defaultExt, extSet, usedNames)
 	else usedNames[name.file_name] = 0;
 
 
-	if (name.file_name.length > 12) name.sliced_name = name.file_name.substring(0, 8) + "...";
+	if (name.file_name.length > 15) name.sliced_name = name.file_name.substring(0, 12) + "...";
 	else name.sliced_name = name.file_name; 
 	name.full = `${name.file_name}.${name.file_ext}`;
 
@@ -4512,7 +4548,7 @@ function ImagesTab(tabs)
         menu.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create("<span class='label'>Sort by: </span>"));
 	    menu.appendChild(sortSelect);
         
-        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No Images found!</div>`);
+        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No images found!</div>`);
         div = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="container scroll" style="display: none;"></div>`);
 
         tabBody.appendChild(loader.element);
@@ -4626,6 +4662,103 @@ function ImagesTab(tabs)
 }
 
 /* harmony default export */ __webpack_exports__["default"] = (ImagesTab);
+
+/***/ }),
+
+/***/ "./src/popup/assets/tabs/lottieFiles.js":
+/*!**********************************************!*\
+  !*** ./src/popup/assets/tabs/lottieFiles.js ***!
+  \**********************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../../utils/svg */ "./src/utils/svg.js");
+/* harmony import */ var _utils_modal__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../utils/modal */ "./src/utils/modal.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../utils/utility */ "./src/utils/utility.js");
+
+
+
+
+
+
+function LottieFilesTab(tabs)
+{
+    this.lotties = [];
+    let div = null;
+    let message = null;
+
+    tabs.roots["lotties"].initialize = (tabBody) => 
+    {        
+        _utils_modal__WEBPACK_IMPORTED_MODULE_2__["default"].createToast();
+
+        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No lottie animations found!</div>`);
+        div = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="container scroll" style="display: none;"></div>`);
+
+        tabBody.appendChild(message);
+        tabBody.appendChild(div);
+
+        render();
+    }
+
+    const render = () => 
+    {
+        if (this.lotties.length)
+        {
+            div.style.display = "block";
+            div.innerHTML = "";
+
+            const ul = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<ul class="assets"></ul>`);
+            for (const lottie of this.lotties)
+            {
+                const li = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+                    <li>
+                        <img class="background" src="assets/transparent.png"/>
+                    </li>
+                `);
+
+                const lottiePlayer = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<lottie-player class="main" src="${lottie.src}" background="transparent"  speed="1" loop autoplay></lottie-player>`);
+
+                const ext = lottie.file_ext.replace(".", "").toUpperCase();
+                const footer = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+                    <div class="footer">
+                        <div class="info">
+                        <h4>${lottie.sliced_name}</h4>
+                        <span>${ext}</span>
+                        </div>
+                        <a href='${lottie.src}' download='${lottie.full}'>
+                            ${_utils_svg__WEBPACK_IMPORTED_MODULE_1__["default"].download}
+                        </a>
+                    </div>
+                `);
+
+                const copy = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(_utils_svg__WEBPACK_IMPORTED_MODULE_1__["default"].copy);
+                copy.addEventListener('click', () => 
+                {
+                    Object(_utils_utility__WEBPACK_IMPORTED_MODULE_3__["copyText"])(lottie.src);
+                    _utils_modal__WEBPACK_IMPORTED_MODULE_2__["default"].show("Copied", _utils_svg__WEBPACK_IMPORTED_MODULE_1__["default"].clipboard, "#43a047");
+                });
+
+                footer.appendChild(copy);
+                li.appendChild(lottiePlayer);
+                li.appendChild(footer);
+                ul.appendChild(li);
+            }
+
+            div.appendChild(ul);
+        }
+        else message.style.display = "block";
+    }
+
+    this.setData = (data) => 
+    {
+        this.lotties = data;
+    }
+}
+
+/* harmony default export */ __webpack_exports__["default"] = (LottieFilesTab);
 
 /***/ }),
 
@@ -4780,7 +4913,7 @@ function VideosTab(tabs)
         menu.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create("<span class='label'>Sort by: </span>"));
 	    menu.appendChild(sortSelect);
         
-        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No Videos found!</div>`);
+        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No videos found!</div>`);
         div = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="container scroll" style="display: none;"></div>`);
 
         tabBody.appendChild(menu);
