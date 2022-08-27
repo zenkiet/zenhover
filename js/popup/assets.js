@@ -4191,10 +4191,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _tabs_images__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./tabs/images */ "./src/popup/assets/tabs/images.js");
 /* harmony import */ var _tabs_videos__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./tabs/videos */ "./src/popup/assets/tabs/videos.js");
 /* harmony import */ var _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./tabs/svgs */ "./src/popup/assets/tabs/svgs.js");
-/* harmony import */ var _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./tabs/lottieFiles */ "./src/popup/assets/tabs/lottieFiles.js");
-/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./helpers */ "./src/popup/assets/helpers.js");
-/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../../utils/utility */ "./src/utils/utility.js");
-/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../utils/store */ "./src/utils/store.js");
+/* harmony import */ var _tabs_pdfs__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./tabs/pdfs */ "./src/popup/assets/tabs/pdfs.js");
+/* harmony import */ var _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./tabs/lottieFiles */ "./src/popup/assets/tabs/lottieFiles.js");
+/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./helpers */ "./src/popup/assets/helpers.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ../../utils/utility */ "./src/utils/utility.js");
+/* harmony import */ var _utils_store__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ../../utils/store */ "./src/utils/store.js");
+
 
 
 
@@ -4219,6 +4221,7 @@ const state = {
 	images: [],
 	svgs: [],
 	videos: [],
+	pdfs: [],
 	lotties: [],
 	sort_by: "None"
 };
@@ -4228,21 +4231,22 @@ const tabs = new _components_tabs__WEBPACK_IMPORTED_MODULE_3__["default"](docume
 const imagesTab = new _tabs_images__WEBPACK_IMPORTED_MODULE_4__["default"](tabs);
 const videosTab = new _tabs_videos__WEBPACK_IMPORTED_MODULE_5__["default"](tabs);
 const svgsTab = new _tabs_svgs__WEBPACK_IMPORTED_MODULE_6__["default"](tabs);
-const lottieFilesTab = new _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_7__["default"](tabs);
+const pdfsTab = new _tabs_pdfs__WEBPACK_IMPORTED_MODULE_7__["default"](tabs);
+const lottieFilesTab = new _tabs_lottieFiles__WEBPACK_IMPORTED_MODULE_8__["default"](tabs);
 
-function initialize(images, svgs, videos, lotties)
+function initialize(images, svgs, videos, pdfs, lotties)
 {
 	imagesTab.sortBy = state.sort_by;
 	videosTab.sortBy = state.sort_by;
 	tabs.toggleTab("images");
 
-	const names = { images: {}, videos: {}, lotties: {} };
+	const names = { images: {}, videos: {}, pdfs: {}, lotties: {} };
 	state.svgs = svgs;
 	for (const src of images)
 	{
 		const image = {
 			src,
-			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "jpg", FORMAT_IMAGES, names.images)
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_9__["getFileName"])(src, "jpg", FORMAT_IMAGES, names.images)
 		};
 
 		state.images.push(image);
@@ -4252,16 +4256,25 @@ function initialize(images, svgs, videos, lotties)
 	{
 		const video = {
 			src,
-			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "mp4", FORMAT_VIDEOS, names.videos)
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_9__["getFileName"])(src, "mp4", FORMAT_VIDEOS, names.videos)
 		};
 		state.videos.push(video);
+	}
+
+	for (const src of pdfs)
+	{
+		const pdf = {
+			src,
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_9__["getFileName"])(src, "pdf", ["pdf"], names.pdfs)
+		}
+		state.pdfs.push(pdf);
 	}
 
 	for (const src of lotties)
 	{
 		const lottie = {
 			src,
-			...Object(_helpers__WEBPACK_IMPORTED_MODULE_8__["getFileName"])(src, "json", ["json"], names.lotties)
+			...Object(_helpers__WEBPACK_IMPORTED_MODULE_9__["getFileName"])(src, "json", ["json"], names.lotties)
 		}
 		state.lotties.push(lottie);
 	}
@@ -4269,6 +4282,7 @@ function initialize(images, svgs, videos, lotties)
 	imagesTab.setData(state.images);
 	videosTab.setData(state.videos);
 	svgsTab.setData(state.svgs);
+	pdfsTab.setData(state.pdfs);
 	lottieFilesTab.setData(state.lotties);
 
 	saveAllBtn.addEventListener("click", saveAll);
@@ -4308,7 +4322,7 @@ function addSvgs(zip)
 	{
 		for (let i = 0; i < state.svgs.length; i++)
 		{
-			zip.file(`svg/${Object(_utils_utility__WEBPACK_IMPORTED_MODULE_9__["randomString"])(10)}.svg`, state.svgs[i]);
+			zip.file(`svg/${Object(_utils_utility__WEBPACK_IMPORTED_MODULE_10__["randomString"])(10)}.svg`, state.svgs[i]);
 			if (i === state.svgs.length - 1) addVideos(zip);
 		}
 	}
@@ -4330,7 +4344,29 @@ function addVideos(zip)
 				zip.file(`videos/${video.full}`, data, { binary: true });
 				doneVideos++;
 
-				if (doneVideos === state.videos.length) addLotties(zip);
+				if (doneVideos === state.videos.length) addPdfs(zip);
+			});
+		}
+	}
+	else addPdfs(zip);
+}
+
+function addPdfs(zip)
+{
+	let donePdfs = 0;
+	if (state.pdfs.length)
+	{
+		for (let i = 0; i < state.pdfs.length; i++)
+		{
+			const pdf = state.pdfs[i];
+			JSZipUtils.getBinaryContent(pdf.src, function (err, data) 
+			{
+				if (err) console.log(err);
+
+				zip.file(`pdf/${pdf.full}`, data, { binary: true });
+				donePdfs++;
+
+				if (donePdfs === state.pdfs.length) addLotties(zip);
 			});
 		}
 	}
@@ -4371,7 +4407,7 @@ function done(zip)
 {
 	try
 	{
-		const settings = await _utils_store__WEBPACK_IMPORTED_MODULE_10__["default"].get('settings');
+		const settings = await _utils_store__WEBPACK_IMPORTED_MODULE_11__["default"].get('settings');
 		if (settings.assets) state.sort_by = settings.assets.sort_by;
 	}
 	catch (err) { console.log(err); }
@@ -4383,7 +4419,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendMessage) =>
 	{
 		case "assets.set":
 		{
-			initialize(message.images, message.svgs, message.videos, message.lotties)
+			initialize(message.images, message.svgs, message.videos, message.pdfs, message.lotties)
 		} break;
 	}
 });
@@ -4467,6 +4503,7 @@ async function getSize(src)
 	}
 	catch (err)
 	{
+		console.log(err);
 		throw err;
 	}
 }
@@ -4759,6 +4796,121 @@ function LottieFilesTab(tabs)
 }
 
 /* harmony default export */ __webpack_exports__["default"] = (LottieFilesTab);
+
+/***/ }),
+
+/***/ "./src/popup/assets/tabs/pdfs.js":
+/*!***************************************!*\
+  !*** ./src/popup/assets/tabs/pdfs.js ***!
+  \***************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utils_element__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../../utils/element */ "./src/utils/element.js");
+/* harmony import */ var _helpers__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../helpers */ "./src/popup/assets/helpers.js");
+/* harmony import */ var _utils_svg__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../utils/svg */ "./src/utils/svg.js");
+/* harmony import */ var _components_loader__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../components/loader */ "./src/components/loader.js");
+/* harmony import */ var _utils_modal__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../../utils/modal */ "./src/utils/modal.js");
+/* harmony import */ var _utils_utility__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../../utils/utility */ "./src/utils/utility.js");
+
+
+
+
+
+
+
+
+function PDFsTab(tabs)
+{
+    this.data = [];
+    this.sortBy = "None";
+    let div = null;
+    let message = null;
+    let menu = null;
+    let sortSelect = null;
+
+    tabs.roots["pdfs"].initialize = (tabBody) => 
+    {
+        _utils_modal__WEBPACK_IMPORTED_MODULE_4__["default"].createToast();
+
+        menu = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class='tab-menu'></div>`);
+        sortSelect = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+            <select style="width: 120px;">
+            <option>None</option>
+            <option>Name</option>
+            </select>
+        `);
+        sortSelect.value = this.sortBy;
+        sortSelect.addEventListener("change", (e) => 
+        {
+            this.sortBy = e.target.value; 
+            render();
+        });
+
+        menu.appendChild(_utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create("<span class='label'>Sort by: </span>"));
+	    menu.appendChild(sortSelect);
+        
+        message = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="message">No PDFs found!</div>`);
+        div = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<div class="container scroll" style="display: none;"></div>`);
+
+        tabBody.appendChild(menu);
+        tabBody.appendChild(message);
+        tabBody.appendChild(div);
+
+        render();
+    }
+
+    const render = () => 
+    {
+        let pdfs = [...this.data];
+        if (sortSelect.value === "Name") pdfs = pdfs.sort(Object(_helpers__WEBPACK_IMPORTED_MODULE_1__["dynamicSort"])("full"));
+
+        if (pdfs.length)
+        {
+            div.style.display = "block";
+            div.innerHTML = "";
+            
+            const ul = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<ul class="assets"></ul>`);
+            for (const pdf of pdfs)
+            {
+                const li = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+                    <li>
+                        <img class="background" src="assets/transparent.png"/>
+                    </li>
+                `);
+
+                const img = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`<img class="main" src="assets/pdf.png"/>`);
+                const footer = _utils_element__WEBPACK_IMPORTED_MODULE_0__["default"].create(`
+                    <div class="footer static">
+                        <div class="info">
+                        <h4>${pdf.sliced_name}</h4>
+                        <span>PDF</span>
+                        </div>
+                        <a href='${pdf.src}' download='${pdf.full}'>
+                            ${_utils_svg__WEBPACK_IMPORTED_MODULE_2__["default"].download}
+                        </a>
+                    </div>
+                `);
+
+                li.appendChild(img);
+                li.appendChild(footer);
+                ul.appendChild(li);
+            }
+
+            div.appendChild(ul);
+        }
+        else message.style.display = "block";
+    }
+
+    this.setData = (data) => 
+    {
+        this.data = data;
+    }
+}
+
+/* harmony default export */ __webpack_exports__["default"] = (PDFsTab);
 
 /***/ }),
 

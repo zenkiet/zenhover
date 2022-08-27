@@ -43,7 +43,7 @@
 /******/
 /******/ 	// script path function
 /******/ 	function jsonpScriptSrc(chunkId) {
-/******/ 		return __webpack_require__.p + "" + chunkId + "." + "06de9418843941de3fc8" + ".js"
+/******/ 		return __webpack_require__.p + "" + chunkId + "." + "1f48fc8d87bcbac33cf4" + ".js"
 /******/ 	}
 /******/
 /******/ 	// The require function
@@ -6640,7 +6640,7 @@ function setupZIP()
 			{
 				if (err) console.log(err);
 				
-				zip.file(`${fileName}`, data, { binary: true });
+				zip.file(`${fileName}.png`, data, { binary: true });
 				doneImages++;
 
 				if (doneImages === Object.keys(state.uris).length) 
